@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { createPortal } from "react-dom"
 import { GoogleMap, type GoogleMapRef } from "./google-map"
 import { CustomerSearch } from "./customer-search"
 import { CustomerList } from "./customer-list"
@@ -370,8 +371,43 @@ export function CustomerMapView() {
     )
   }
 
+  // 顶部控制按钮组件
+  const topControls = (
+    <>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleRefresh} 
+        disabled={refreshing}
+        title="刷新客户数据"
+      >
+        <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        刷新数据
+      </Button>
+      <Button variant="outline" size="sm" onClick={handleResetView} title="重置视图显示所有客户">
+        <RotateCcw className="h-4 w-4" />
+        重置视图
+      </Button>
+      <Button
+        variant={showSalesRange ? "default" : "outline"}
+        size="sm"
+        onClick={() => setShowSalesRange(!showSalesRange)}
+        title="显示/隐藏销量区域"
+      >
+        <MapPin className="h-4 w-4" />
+        销量区域
+      </Button>
+    </>
+  )
+
   return (
-    <div className="flex gap-4 h-[calc(100vh-200px)]">
+    <>
+      {/* 将控制按钮渲染到页面顶部 */}
+      {typeof window !== "undefined" && 
+        createPortal(topControls, document.getElementById("map-controls") as HTMLElement)
+      }
+      
+      <div className="flex gap-4 h-[calc(100vh-200px)]">
       {/* 侧边栏 */}
       {showSidebar && (
         <div className="w-80 flex flex-col gap-4">
@@ -425,33 +461,10 @@ export function CustomerMapView() {
       {/* 地图区域 */}
       <div className="flex-1 relative">
         <Card className="h-full">
-          <div className="absolute top-4 left-4 z-10 flex gap-2">
+          <div className="absolute top-4 left-4 z-10">
             <Button variant="outline" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
               <Filter className="h-4 w-4" />
               {showSidebar ? "隐藏" : "显示"}侧边栏
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefresh} 
-              disabled={refreshing}
-              title="刷新客户数据"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              刷新数据
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleResetView} title="重置视图显示所有客户">
-              <RotateCcw className="h-4 w-4" />
-              重置视图
-            </Button>
-            <Button
-              variant={showSalesRange ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowSalesRange(!showSalesRange)}
-              title="显示/隐藏销量大小"
-            >
-              <MapPin className="h-4 w-4" />
-              销量大小
             </Button>
           </div>
 
@@ -465,5 +478,6 @@ export function CustomerMapView() {
         </Card>
       </div>
     </div>
+    </>
   )
 }
