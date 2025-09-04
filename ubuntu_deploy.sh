@@ -120,11 +120,29 @@ EOF
     
     # 安装依赖
     print_status "安装前端依赖..."
-    pnpm install --frozen-lockfile
+    if ! pnpm install --frozen-lockfile; then
+        print_error "前端依赖安装失败，尝试清理缓存后重试..."
+        pnpm store prune
+        rm -rf node_modules
+        pnpm install
+    fi
+    
+    # 验证依赖安装
+    if [ ! -d "node_modules" ]; then
+        print_error "node_modules目录不存在，依赖安装失败"
+        exit 1
+    fi
     
     # 构建应用
     print_status "构建前端应用..."
-    pnpm build
+    if ! pnpm build; then
+        print_error "前端构建失败"
+        print_status "请检查："
+        print_status "1. Node.js版本: $(node --version)"
+        print_status "2. pnpm版本: $(pnpm --version)"
+        print_status "3. 项目依赖是否完整"
+        exit 1
+    fi
     
     print_status "前端部署完成 ✅"
 }
@@ -135,10 +153,13 @@ deploy_backend() {
     
     cd backend
     
-    # 备份原配置
-    if [ ! -f "config.py.backup" ]; then
-        cp config.py config.py.backup
-        print_status "已备份原配置文件"
+    # 备份原配置（添加错误处理）
+    if [ ! -f "config.py.backup" ] && [ -f "config.py" ]; then
+        if cp config.py config.py.backup 2>/dev/null; then
+            print_status "✅ 已备份原配置文件"
+        else
+            print_warning "⚠️  无法备份原配置文件，继续部署..."
+        fi
     fi
     
     # 修改config.py为生产环境配置
@@ -226,25 +247,50 @@ EOF
     
     chmod +x start_prod.py
     
-    # 创建虚拟环境
+    # 创建虚拟环境（添加错误处理）
     if [ ! -d "venv" ]; then
         print_status "创建Python虚拟环境..."
-        python3 -m venv venv
+        if ! python3 -m venv venv; then
+            print_error "虚拟环境创建失败"
+            print_status "请检查："
+            print_status "1. python3-venv 是否安装: sudo apt install python3-venv"
+            print_status "2. 目录权限是否正确"
+            exit 1
+        fi
     fi
     
     # 安装依赖
     print_status "安装后端依赖..."
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    pip install gunicorn  # 生产WSGI服务器
-    
-    # 测试配置
-    print_status "测试后端配置..."
-    python3 -c "from config_prod import settings; print('✅ 配置文件正常')" || {
-        print_error "配置文件有错误，请检查"
+    if ! source venv/bin/activate; then
+        print_error "无法激活虚拟环境"
         exit 1
-    }
+    fi
+    
+    if ! pip install --upgrade pip; then
+        print_error "pip升级失败"
+        exit 1
+    fi
+    
+    if ! pip install -r requirements.txt; then
+        print_error "Python依赖安装失败"
+        print_status "请检查requirements.txt文件和网络连接"
+        exit 1
+    fi
+    
+    # 安装生产服务器
+    pip install gunicorn
+    
+    # 测试配置（改进错误提示）
+    print_status "测试后端配置..."
+    if ! python3 -c "from config_prod import settings; print('✅ 配置文件正常')"; then
+        print_error "配置文件测试失败"
+        print_status "可能的原因："
+        print_status "1. config_prod.py文件不存在或有语法错误"
+        print_status "2. 缺少必要的Python模块"
+        print_status "3. 数据库连接配置错误"
+        print_status "请检查 config_prod.py 文件"
+        exit 1
+    fi
     
     cd ..
     print_status "后端部署完成 ✅"
@@ -370,10 +416,39 @@ health_check() {
     fi
 }
 
+# 修复权限问题
+fix_permissions() {
+    print_title "修复目录权限..."
+    
+    # 获取当前用户
+    CURRENT_USER=$(whoami)
+    PROJECT_DIR=$(pwd)
+    
+    print_status "当前用户: $CURRENT_USER"
+    print_status "项目目录: $PROJECT_DIR"
+    
+    # 修复目录权限
+    print_status "修复目录权限..."
+    sudo chown -R $CURRENT_USER:$CURRENT_USER $PROJECT_DIR
+    chmod -R 755 $PROJECT_DIR
+    
+    # 清理可能损坏的文件
+    print_status "清理之前失败的安装文件..."
+    rm -rf node_modules
+    rm -rf backend/venv
+    rm -f package-lock.json
+    rm -rf backend/__pycache__
+    
+    print_status "权限修复完成 ✅"
+}
+
 # 主执行流程
 main() {
     echo
     print_title "🚀 Ubuntu 服务器部署开始"
+    echo
+    
+    fix_permissions
     echo
     
     check_requirements
