@@ -374,6 +374,10 @@ export function CustomerMapView() {
   // 顶部控制按钮组件
   const topControls = (
     <>
+      <Button variant="outline" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
+        <Filter className="h-4 w-4" />
+        {showSidebar ? "隐藏" : "显示"}侧边栏
+      </Button>
       <Button 
         variant="outline" 
         size="sm" 
@@ -392,7 +396,7 @@ export function CustomerMapView() {
         variant={showSalesRange ? "default" : "outline"}
         size="sm"
         onClick={() => setShowSalesRange(!showSalesRange)}
-        title="显示/隐藏销量区域"
+        title="显示/隐藏销xi区域"
       >
         <MapPin className="h-4 w-4" />
         销量区域
@@ -461,13 +465,6 @@ export function CustomerMapView() {
       {/* 地图区域 */}
       <div className="flex-1 relative">
         <Card className="h-full">
-          <div className="absolute top-4 left-4 z-10">
-            <Button variant="outline" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
-              <Filter className="h-4 w-4" />
-              {showSidebar ? "隐藏" : "显示"}侧边栏
-            </Button>
-          </div>
-
           <GoogleMap
             ref={mapRef}
             customers={filteredCustomers}
