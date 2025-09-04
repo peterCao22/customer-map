@@ -420,13 +420,33 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         return
       }
 
-      if (window.google) {
+      // 检查是否已经加载
+      if (window.google && window.google.maps) {
         setIsLoaded(true)
         return
       }
 
+      // 检查是否已经有脚本正在加载
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
+      if (existingScript) {
+        // 如果脚本已存在，等待其加载完成
+        const checkLoaded = setInterval(() => {
+          if (window.google && window.google.maps) {
+            setIsLoaded(true)
+            clearInterval(checkLoaded)
+          }
+        }, 100)
+        
+        // 10秒后停止检查，避免无限等待
+        setTimeout(() => clearInterval(checkLoaded), 10000)
+        return
+      }
+
+      // 创建唯一的回调函数名
+      const callbackName = `initMap_${Date.now()}`
+      
       const script = document.createElement("script")
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=${callbackName}`
       script.async = true
       script.defer = true
 
@@ -435,13 +455,20 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         setError(errorMsg)
       }
 
-      window.initMap = () => {
+      // 使用唯一的回调函数名
+      (window as any)[callbackName] = () => {
         setIsLoaded(true)
+        // 清理回调函数
+        delete (window as any)[callbackName]
       }
 
       document.head.appendChild(script)
 
       return () => {
+        // 清理函数
+        if ((window as any)[callbackName]) {
+          delete (window as any)[callbackName]
+        }
         if (script.parentNode) {
           script.parentNode.removeChild(script)
         }
