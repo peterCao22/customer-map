@@ -396,10 +396,10 @@ export function CustomerMapView() {
         variant={showSalesRange ? "default" : "outline"}
         size="sm"
         onClick={() => setShowSalesRange(!showSalesRange)}
-        title="显示/隐藏销xi区域"
+        title="显示/隐藏销售区域"
       >
         <MapPin className="h-4 w-4" />
-        销量区域
+        销售区域
       </Button>
     </>
   )
