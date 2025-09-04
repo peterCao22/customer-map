@@ -4,8 +4,8 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: '客户地址管理系统',
-  description: '基于Google Maps的客户地址管理和可视化系统',
+  title: 'Customer Address Management System',
+  description: 'Google Maps-based customer address management and visualization system',
   generator: 'Next.js',
   icons: {
     icon: '/favicon.svg',

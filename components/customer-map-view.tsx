@@ -65,8 +65,8 @@ const transformCustomerData = (apiData: CustomerDirectoryResponse): Customer => 
   return {
     id: apiData.id.toString(),
     companyName: apiData.customer_name, // 公司名称（直接来自customer_name）
-    email: `未提供`, // 基于公司名生成占位邮箱
-    phone: "未提供",                   // 数据库中没有电话字段
+    email: `Not provided`, // 基于公司名生成占位邮箱
+    phone: "Not provided",                   // 数据库中没有电话字段
     address: apiData.full_address,    // 完整地址
     lat: apiData.lat || 0,           // 纬度坐标
     lng: apiData.lng || 0,           // 经度坐标
@@ -223,7 +223,7 @@ export function CustomerMapView() {
         setFilteredCustomers(nonStrategicCustomers)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载客户数据失败')
+      setError(err instanceof Error ? err.message : 'Failed to load customer data')
       console.error('加载客户数据失败:', err)
     } finally {
       setLoading(false)
@@ -270,7 +270,7 @@ export function CustomerMapView() {
       
       setFilteredCustomers(searchResults)
     } catch (err) {
-      setError('搜索失败，显示本地结果')
+      setError('Search failed, showing local results')
       // 发生错误时回退到本地过滤
       filterCustomersLocally()
     }
@@ -365,7 +365,7 @@ export function CustomerMapView() {
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">正在加载客户数据...</p>
+          <p className="text-muted-foreground">Loading customer data...</p>
         </div>
       </div>
     )
@@ -376,30 +376,30 @@ export function CustomerMapView() {
     <>
       <Button variant="outline" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
         <Filter className="h-4 w-4" />
-        {showSidebar ? "隐藏" : "显示"}侧边栏
+        {showSidebar ? "Hide" : "Show"} Sidebar
       </Button>
       <Button 
         variant="outline" 
         size="sm" 
         onClick={handleRefresh} 
         disabled={refreshing}
-        title="刷新客户数据"
+        title="Refresh customer data"
       >
         <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-        刷新数据
+        Refresh Data
       </Button>
-      <Button variant="outline" size="sm" onClick={handleResetView} title="重置视图显示所有客户">
+      <Button variant="outline" size="sm" onClick={handleResetView} title="Reset view to show all customers">
         <RotateCcw className="h-4 w-4" />
-        重置视图
+        Reset View
       </Button>
       <Button
         variant={showSalesRange ? "default" : "outline"}
         size="sm"
         onClick={() => setShowSalesRange(!showSalesRange)}
-        title="显示/隐藏销售区域"
+        title="Show/Hide Sales Area"
       >
         <MapPin className="h-4 w-4" />
-        销售区域
+        Sales Area
       </Button>
     </>
   )
@@ -419,16 +419,16 @@ export function CustomerMapView() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                客户列表
+                Customer List
                 {refreshing && <RefreshCw className="h-4 w-4 animate-spin" />}
               </h2>
               <div className="text-sm text-muted-foreground">
                 {searchQuery || selectedTags.length > 0 || showStrategicOnly
                   ? `${filteredCustomers.length} / ${customers.length}`
-                  : `显示 ${filteredCustomers.length} 个客户地址`}
+                  : `Showing ${filteredCustomers.length} customer addresses`}
                 {showStrategicOnly && (
                   <span className="ml-2 text-blue-600 font-medium">
-                    (仅战略客户)
+                    (Strategic customers only)
                   </span>
                 )}
               </div>

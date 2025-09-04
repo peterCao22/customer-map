@@ -31,7 +31,7 @@ export function CustomerSearch({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="搜索公司名称、邮箱或地址..."
+          placeholder="Search company name, email or address..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10"
@@ -50,7 +50,7 @@ export function CustomerSearch({
 
       {/* 标签过滤 */}
       <div>
-        <div className="text-sm font-medium mb-2">按标签筛选:</div>
+        <div className="text-sm font-medium mb-2">Filter by tags:</div>
         <div className="flex flex-wrap gap-2">
           {allTags
             .filter((tag) => tag !== "STRATEGIC ACCOUNTS") // 隐藏STRATEGIC ACCOUNTS标签
@@ -74,7 +74,7 @@ export function CustomerSearch({
             className="mt-2 h-6 text-xs"
             onClick={() => selectedTags.forEach((tag) => onTagToggle(tag))}
           >
-            清除所有筛选
+            Clear all filters
           </Button>
         )}
       </div>

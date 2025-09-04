@@ -17,7 +17,7 @@ export function CustomerList({ customers, selectedCustomer, onCustomerSelect }: 
     return (
       <div className="p-4 text-center text-muted-foreground">
         <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p>没有找到匹配的客户</p>
+        <p>No matching customers found</p>
       </div>
     )
   }

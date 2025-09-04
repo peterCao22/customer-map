@@ -416,7 +416,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyBMkDXChYggBlWNUOOA7ysyf24eWRgf8sg"
 
       if (!apiKey) {
-        setError("Google Maps API密钥未设置")
+        setError("Google Maps API key not set")
         return
       }
 
@@ -444,14 +444,14 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
       // 创建唯一的回调函数名
       const callbackName = `initMap_${Date.now()}`
-      
+
       const script = document.createElement("script")
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=${callbackName}`
       script.async = true
       script.defer = true
 
       script.onerror = () => {
-        const errorMsg = "Google Maps API脚本加载失败，请检查API密钥是否正确"
+        const errorMsg = "Failed to load Google Maps API script, please check if the API key is correct"
         setError(errorMsg)
       }
 
@@ -557,7 +557,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           createMarkers()
         }
       } catch (err) {
-        const errorMsg = `地图初始化失败: ${err}`
+        const errorMsg = `Map initialization failed: ${err}`
         setError(errorMsg)
       }
     }, [isLoaded])
@@ -619,7 +619,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           const marker = new window.google.maps.Marker({
             position: { lat: customer.lat, lng: customer.lng },
             map: mapInstanceRef.current,
-            title: `${customer.companyName} (销售量: ${customerSales.toLocaleString()})`,
+            title: `${customer.companyName} (Sales: ${customerSales.toLocaleString()})`,
             icon: {
               url: markerIcon,
               scaledSize: new window.google.maps.Size(markerSize, markerSize),
@@ -649,10 +649,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             const content = `
             <div class="p-3 min-w-[250px]">
               <h3 class="font-semibold text-lg mb-2">${customer.companyName}</h3>
-              <p class="text-sm mb-1"><strong>邮箱:</strong> ${customer.email}</p>
-              <p class="text-sm mb-1"><strong>电话:</strong> ${customer.phone}</p>
-              <p class="text-sm mb-2"><strong>地址:</strong> ${customer.address}</p>
-              ${customer.salesRadius ? `<p class="text-sm mb-2"><strong>销量:</strong> ${customer.salesRadius}公里</p>` : ""}
+              <p class="text-sm mb-1"><strong>Email:</strong> ${customer.email}</p>
+              <p class="text-sm mb-1"><strong>Phone:</strong> ${customer.phone}</p>
+              <p class="text-sm mb-2"><strong>Address:</strong> ${customer.address}</p>
+              ${customer.salesRadius ? `<p class="text-sm mb-2"><strong>Sales Range:</strong> ${customer.salesRadius}km</p>` : ""}
               <div class="flex flex-wrap gap-1">
                 ${customer.tags.map((tag) => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">${tag}</span>`).join("")}
               </div>
@@ -682,7 +682,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         // }
 
       } catch (err) {
-        const errorMsg = `标记创建失败: ${err}`
+        const errorMsg = `Marker creation failed: ${err}`
         setError(errorMsg)
       }
     }
@@ -714,7 +714,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
     useEffect(() => {
       if (currentZoom >= 6) {
-        createMarkers()
+      createMarkers()
       }
     }, [customers, selectedCustomer, onCustomerSelect, currentZoom])
 
@@ -751,9 +751,9 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return (
         <div className="h-full flex items-center justify-center bg-muted">
           <div className="text-center">
-            <p className="text-muted-foreground mb-2">请设置 Google Maps API 密钥</p>
-            <p className="text-sm text-muted-foreground">在环境变量中添加 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</p>
-            <p className="text-xs text-red-500 mt-2">确保使用 NEXT_PUBLIC_ 前缀</p>
+            <p className="text-muted-foreground mb-2">Please set Google Maps API key</p>
+            <p className="text-sm text-muted-foreground">Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to environment variables</p>
+            <p className="text-xs text-red-500 mt-2">Make sure to use NEXT_PUBLIC_ prefix</p>
           </div>
         </div>
       )
@@ -763,10 +763,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return (
         <div className="h-full flex items-center justify-center bg-muted">
           <div className="text-center max-w-md">
-            <p className="text-red-500 mb-2">地图加载错误</p>
+            <p className="text-red-500 mb-2">Map loading error</p>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <p className="text-xs text-muted-foreground">
-              请检查：1. API密钥是否正确 2. 是否启用了Maps JavaScript API 3. 域名是否在API限制中
+              Please check: 1. API key is correct 2. Maps JavaScript API is enabled 3. Domain is in API restrictions
             </p>
           </div>
         </div>
@@ -780,7 +780,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           <div className="absolute inset-0 flex items-center justify-center bg-muted">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-              <p className="text-muted-foreground">加载地图中...</p>
+              <p className="text-muted-foreground">Loading map...</p>
             </div>
           </div>
         )}
