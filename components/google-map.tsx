@@ -49,10 +49,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       const ratio = Math.min(totalAmount / maxAmount, 1)
       const calculatedSize = Math.round(minSize + ratio * (maxSize - minSize))
       
-      // 调试：输出计算过程
-/*       if (totalAmount > 1000000) { // 只输出大客户的计算过程
-        console.log(`[大小计算] 销售量: ${totalAmount.toLocaleString()}, 比例: ${ratio.toFixed(3)}, 半径: ${calculatedSize}px`)
-      } */
       
       return calculatedSize
     }
@@ -157,9 +153,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
       
-      if (!mapId) {
-        console.warn('Map ID is not set - this will cause FeatureLayer to fail')
-      }
     }
 
     // 根据客户州分组统计
@@ -358,7 +351,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           statePolygonsRef.current.push(stateLabel)
         })
       } catch (err) {
-        console.warn('State labels creation failed:', err)
+        // State labels creation failed silently
       }
     }
 
@@ -532,7 +525,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
         // 初始化时根据缩放级别显示相应内容
         if (currentZoom < 6) {
-          createStateOverlays().catch(err => console.warn('State overlay init failed:', err))
+          createStateOverlays().catch(() => {})
         } else {
           createMarkers()
         }
@@ -571,9 +564,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           }
         })
         
-        // 调试：输出销售量统计
-        console.log(`[销售量统计] 最大销售量: ${maxSalesAmount.toLocaleString()}`)
-        console.log(`[销售量统计] 客户数据样本:`, Array.from(customerSalesMap.entries()).slice(0, 5))
 
         // 创建新标记和圆形覆盖层（只在缩放级别6+时）
         customers.forEach((customer, index) => {
@@ -587,10 +577,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             ? createSalesBasedMarker("#ef4444", markerRadius, true)
             : createSalesBasedMarker(color, markerRadius, false)
 
-          // 调试：输出前几个标记的详细信息
-          if (index < 5) {
-            console.log(`[标记 ${index}] 客户: ${customer.customerId}, 销售量: ${customerSales.toLocaleString()}, 半径: ${markerRadius}px, SVG大小: ${markerSize}px`)
-          }
 
           const marker = new window.google.maps.Marker({
             position: { lat: customer.lat, lng: customer.lng },
@@ -675,7 +661,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       
       if (currentZoom < 6) {
         // 缩放级别小于6，显示州级覆盖，隐藏标记
-        createStateOverlays().catch(err => console.warn('State overlay zoom failed:', err))
+        createStateOverlays().catch(() => {})
         // 清除标记但保留在引用中，以便快速恢复
         markersRef.current.forEach((marker) => marker.setMap(null))
         circlesRef.current.forEach((circle) => circle.setMap(null))
