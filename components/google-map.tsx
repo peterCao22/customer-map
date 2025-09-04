@@ -215,6 +215,160 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return stateStats
     }
 
+    // 使用Place ID API获取准确边界（与正常模式一致）
+    const tryPlaceIdApproach = async (stateStats: Map<string, number>, maxCount: number) => {
+      try {
+        if (!window.google.maps.Geocoder) {
+          console.log('❌ Geocoder API不可用')
+          return false
+        }
+
+        console.log('🔍 使用Place ID和Geocoding API...')
+        const geocoder = new window.google.maps.Geocoder()
+
+        // 复用正常模式的Place ID映射
+        const placeIdToStateMap: { [placeId: string]: string } = {
+          "ChIJdf5LHzR_hogR6czIUzU0VV4": "AL", "ChIJG8CuwJzfAFQRNduKqSde27w": "AK", 
+          "ChIJaxhMy-sIK4cRcc3Bf7EnOUI": "AZ", "ChIJYSc_dD-e0ocR0NLf_z5pBaQ": "AR",
+          "ChIJPV4oX_65j4ARVW8IJ6IJUYs": "CA", "ChIJt1YYm3QUQIcR_6eQSTGDVMc": "CO",
+          "ChIJpVER8hFT5okR5XBhBVttmq4": "CT", "ChIJO9YMTXYFx4kReOgEjBItHZQ": "DE",
+          "ChIJvypWkWV2wYgR0E7HW9MTLvc": "FL", "ChIJV4FfHcU28YgR5xBP7BC8hGY": "GA",
+          "ChIJGSZubzgtC4gRVlkRZFCCFX8": "IL", "ChIJHRv42bxQa4gRcuwyy84vEH4": "IN",
+          "ChIJ35Dx6etNtokRsfZVdmU3r_I": "MD", "ChIJ_b9z6W1l44kRHA2DVTbQxkU": "MA",
+          "ChIJEQTKxz2qTE0Rs8liellI3Zc": "MI", "ChIJmwt4YJpbWE0RD6L-EJvJogI": "MN",
+          "ChIJn0AAnpX7wIkRjW0_-Ad70iw": "NJ", "ChIJqaUj8fBLzEwRZ5UY3sHGz90": "NY",
+          "ChIJgRo4_MQfVIgRGa4i6fUwP60": "NC", "ChIJwY5NtXrpNogRFtmfnDlkzeU": "OH",
+          "ChIJieUyHiaALYgRPbQiUEchRsI": "PA", "ChIJA8-XniNLYYgRVpGBpcEgPgM": "TN",
+          "ChIJSTKCCzZwQIYRPN4IGI8c6xY": "TX", "ChIJzbK8vXDWTIgRlaZGt0lBTsA": "VA",
+          "ChIJ-bDD5__lhVQRuvNfbGh4QpQ": "WA", "ChIJr-OEkw_0qFIR1kmG-LjV1fI": "WI"
+        }
+
+        let successCount = 0
+
+        // 为重要的州获取准确边界
+        for (const [placeId, stateAbbr] of Object.entries(placeIdToStateMap)) {
+          const isUSState = !!STATE_POPULATION_DATA[stateAbbr]
+          if (!isUSState) continue
+
+          try {
+            const results = await new Promise<any>((resolve, reject) => {
+              geocoder.geocode({ placeId }, (results: any, status: any) => {
+                if (status === 'OK' && results?.[0]) resolve(results[0])
+                else reject(new Error(`Place ID geocoding failed: ${status}`))
+              })
+            })
+
+            if (results.geometry?.viewport) {
+              const { viewport } = results.geometry
+              const ne = viewport.getNorthEast()
+              const sw = viewport.getSouthWest()
+              
+              // 创建准确的矩形边界
+              const bounds = [
+                { lat: ne.lat(), lng: sw.lng() }, // NW
+                { lat: ne.lat(), lng: ne.lng() }, // NE  
+                { lat: sw.lat(), lng: ne.lng() }, // SE
+                { lat: sw.lat(), lng: sw.lng() }  // SW
+              ]
+              
+              const polygon = new window.google.maps.Polygon({
+                paths: bounds,
+                strokeColor: '#000000',
+                strokeOpacity: 0.9,
+                strokeWeight: 1,
+                fillColor: getStatePopulationColor(stateAbbr),
+                fillOpacity: 0.8,
+                map: mapInstanceRef.current,
+                zIndex: 1
+              })
+              
+              statePolygonsRef.current.push(polygon)
+
+              // 添加客户标签
+              const customerCount = stateStats.get(stateAbbr) || 0
+              if (customerCount > 0) {
+                const labelMarker = new window.google.maps.Marker({
+                  position: { 
+                    lat: (ne.lat() + sw.lat()) / 2, 
+                    lng: (ne.lng() + sw.lng()) / 2 
+                  },
+                  map: mapInstanceRef.current,
+                  icon: {
+                    url: createLabelIcon(`${stateAbbr}: ${customerCount}`),
+                    scaledSize: new window.google.maps.Size(80, 30),
+                    anchor: new window.google.maps.Point(40, 15),
+                  },
+                  zIndex: 1000
+                })
+                statePolygonsRef.current.push(labelMarker)
+              }
+
+              // 点击事件
+              polygon.addListener('click', () => {
+                const population = STATE_POPULATION_DATA[stateAbbr] || 0
+                const infoContent = `
+                  <div style="padding: 8px; font-family: system-ui;">
+                    <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}州</h3>
+                    <p style="margin: 0; color: #4b5563;">人口数量: ${population.toLocaleString()}</p>
+                    <p style="margin: 4px 0 0 0; color: #6b7280;">客户数量: ${customerCount}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp模式（Place ID准确边界）</p>
+                  </div>
+                `
+                if (infoWindowRef.current) infoWindowRef.current.close()
+                infoWindowRef.current = new window.google.maps.InfoWindow({ content: infoContent })
+                infoWindowRef.current.open(mapInstanceRef.current)
+              })
+
+              successCount++
+              console.log(`✅ ${stateAbbr}: 获取Place ID边界成功`)
+              await new Promise(resolve => setTimeout(resolve, 100)) // 限制API频率
+            }
+          } catch (error) {
+            console.log(`❌ ${stateAbbr}: Place ID失败 - ${error}`)
+          }
+        }
+
+        // 处理非美国地区标签
+        stateStats.forEach((count, region) => {
+          if (!STATE_POPULATION_DATA[region] && count > 0) {
+            const positions: any = { "ON": {lat: 50, lng: -85}, "QC": {lat: 53, lng: -70}, "BC": {lat: 54, lng: -125} }
+            const pos = positions[region]
+            if (pos) {
+              const marker = new window.google.maps.Marker({
+                position: pos,
+                map: mapInstanceRef.current,
+                icon: {
+                  url: createLabelIcon(`${region}: ${count}`),
+                  scaledSize: new window.google.maps.Size(80, 30),
+                  anchor: new window.google.maps.Point(40, 15),
+                },
+                zIndex: 1000
+              })
+              statePolygonsRef.current.push(marker)
+            }
+          }
+        })
+
+        return successCount > 10 // 成功创建足够多的边界
+      } catch (error) {
+        console.error('❌ Place ID方法异常:', error)
+        return false
+      }
+    }
+
+    // 创建标签图标的辅助函数
+    const createLabelIcon = (text: string) => {
+      const svgContent = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="30" viewBox="0 0 80 30">
+          <rect x="2" y="2" width="76" height="26" fill="rgba(255,255,255,0.95)" 
+                stroke="#333" stroke-width="2" rx="8"/>
+          <text x="40" y="20" font-family="Arial, sans-serif" font-size="14" 
+                font-weight="bold" fill="#333" text-anchor="middle">${text}</text>
+        </svg>
+      `
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgContent)}`
+    }
+
     // 精确州边界降级方案：使用真实的州边界坐标数据
     const createPolygonStateOverlays = async () => {
       if (!mapInstanceRef.current || !window.google) return
@@ -226,7 +380,16 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         const stateStats = getCustomersByState()
         const maxCount = Math.max(...Array.from(stateStats.values()), 1)
         
-        console.log('🔄 Boot Camp兼容模式：美国州按人口着色，非美国地区统一灰色...')
+        console.log('🔄 Boot Camp兼容模式：尝试Place ID获取准确边界...')
+        
+        // 首先尝试使用Place ID API获取准确边界（与正常模式一致）
+        const apiSuccess = await tryPlaceIdApproach(stateStats, maxCount)
+        if (apiSuccess) {
+          console.log('✅ 使用Place ID API获取准确边界成功')
+          return
+        }
+        
+        console.log('⚠️ Place ID API失败，使用预定义坐标...')
         
         // 精确的美国州边界坐标数据（简化但准确的多边形）
         const statePolygonData: { [stateAbbr: string]: { lat: number; lng: number }[] } = {
@@ -618,7 +781,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           }
         })
         
-        console.log(`✅ Boot Camp模式完成: ${statePolygonsRef.current.length} 个覆盖 (美国州有颜色，非美国地区仅标签)`)
+        console.log(`✅ Boot Camp预定义坐标完成: ${statePolygonsRef.current.length} 个覆盖 (美国州有颜色，非美国地区仅标签)`)
         
       } catch (error) {
         console.error('❌ Polygon州边界创建失败:', error)
