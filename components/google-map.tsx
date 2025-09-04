@@ -431,13 +431,13 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           ]
         }
         
-        // 为每个有客户数据的州创建精确多边形
-        stateStats.forEach((count, stateAbbr) => {
+        // 为所有有人口数据的州创建精确多边形（复用正常模式逻辑）
+        Object.keys(statePolygonData).forEach((stateAbbr) => {
           const polygonCoords = statePolygonData[stateAbbr]
           if (!polygonCoords) return
           
-          // 使用与正常版本相同的热力图颜色
-          const fillColor = getStateHeatColor(count, maxCount)
+          // 复用正常模式的人口着色逻辑，统一按人口数量
+          const fillColor = getStatePopulationColor(stateAbbr)
           
           // 创建多边形覆盖 - 增强不透明度让颜色更深
           const polygon = new window.google.maps.Polygon({
@@ -453,6 +453,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           
           statePolygonsRef.current.push(polygon)
           
+          // 获取该州的客户数量和人口数量
+          const customerCount = stateStats.get(stateAbbr) || 0
+          const population = STATE_POPULATION_DATA[stateAbbr] || 0
+          
           // 添加点击事件
           polygon.addListener('click', (event: any) => {
             // 判断是否为加拿大省份
@@ -462,8 +466,9 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             const infoContent = `
               <div style="padding: 8px; font-family: system-ui;">
                 <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}${regionType}</h3>
-                <p style="margin: 0; color: #4b5563;">客户数量: ${count}</p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式</p>
+                <p style="margin: 0; color: #4b5563;">人口数量: ${population.toLocaleString()}</p>
+                <p style="margin: 4px 0 0 0; color: #6b7280;">客户数量: ${customerCount}</p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式（按人口着色）</p>
               </div>
             `
             
@@ -496,19 +501,21 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgContent)}`
           }
           
-          // 使用Marker显示小巧标签
-          const labelMarker = new window.google.maps.Marker({
-            position: { lat: centerLat, lng: centerLng },
-            map: mapInstanceRef.current,
-            icon: {
-              url: createLabelIcon(`${stateAbbr}: ${count}`),
-              scaledSize: new window.google.maps.Size(80, 30),
-              anchor: new window.google.maps.Point(40, 15),
-            },
-            zIndex: 1000 // 确保标签在最顶层
-          })
-          
-          statePolygonsRef.current.push(labelMarker)
+          // 显示客户数量标签（只有有客户的州才显示标签）
+          if (customerCount > 0) {
+            const labelMarker = new window.google.maps.Marker({
+              position: { lat: centerLat, lng: centerLng },
+              map: mapInstanceRef.current,
+              icon: {
+                url: createLabelIcon(`${stateAbbr}: ${customerCount}`),
+                scaledSize: new window.google.maps.Size(80, 30),
+                anchor: new window.google.maps.Point(40, 15),
+              },
+              zIndex: 1000 // 确保标签在最顶层
+            })
+            
+            statePolygonsRef.current.push(labelMarker)
+          }
         })
         
         console.log(`✅ 精确州边界降级方案完成: 创建 ${statePolygonsRef.current.length} 个州边界和标签`)
@@ -554,14 +561,14 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           stateCustomerData[stateAbbr] = count
         })
 
-        // 设置州边界样式（按照官方文档的模式）
+        // 设置州边界样式（复用正常模式，但改为按人口着色）
                   featureLayer.style = (options: any) => {
             const feature = options.feature
             
-            // 使用 Place ID 匹配客户数据（官方推荐方法）
+            // 使用 Place ID 匹配人口数据（复用正常模式逻辑）
             const placeId = feature.placeId
             
-
+            console.log('🎯 FeatureLayer样式设置 - PlaceID:', placeId)
             
             // 美国各州的 Place ID 到缩写映射（使用官方示例的精确 Place ID）
             const placeIdToStateMap: { [placeId: string]: string } = {
@@ -618,8 +625,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             }
             
             const stateAbbr = placeIdToStateMap[placeId] || ''
+            
+            console.log(`🎨 正常模式样式设置 - ${stateAbbr}: 复用人口着色逻辑`)
           
-          // 根据州人口数量计算颜色（黄色系渐变）
+          // 复用正常模式的人口着色逻辑，统一按人口数量
           const fillColor = getStatePopulationColor(stateAbbr)
           
           return {
@@ -643,7 +652,8 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           }
         }, 500)
 
-        // 添加客户数量标签
+        // 添加客户数量标签（只显示有客户的州）
+        console.log('🏷️ 添加正常模式标签（只显示有客户的州）')
         await addStateLabels(stateStats)
         
         // 保存 featureLayer 引用
