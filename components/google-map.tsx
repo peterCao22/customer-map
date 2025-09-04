@@ -42,11 +42,12 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         
         if (!gl) return false
         
-        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+        const webglContext = gl as WebGLRenderingContext
+        const debugInfo = webglContext.getExtension('WEBGL_debug_renderer_info')
         if (!debugInfo) return false
         
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
+        const renderer = webglContext.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+        const vendor = webglContext.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
         
         // 检测是否为软件渲染
         const isSoftwareRendering = (
@@ -213,7 +214,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         console.log('🔄 使用Polygon降级方案渲染州边界（Boot Camp兼容）...')
         
         // 简化的州边界数据（主要州的近似矩形边界）
-        const statePolygonData: { [stateAbbr: string]: google.maps.LatLngLiteral[] } = {
+        const statePolygonData: { [stateAbbr: string]: { lat: number; lng: number }[] } = {
           "CA": [ // 加利福尼亚
             { lat: 42.0, lng: -124.4 }, { lat: 42.0, lng: -114.1 },
             { lat: 32.5, lng: -114.1 }, { lat: 32.5, lng: -124.4 }
