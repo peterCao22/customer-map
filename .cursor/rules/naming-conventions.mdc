@@ -1,0 +1,33 @@
+---
+globs: *.ts,*.tsx
+description: Naming conventions and data structure guidelines for TypeScript files
+---
+
+# 命名约定和数据结构规范
+
+## 数据字段命名
+- **元数据字段**: 使用 snake_case 命名（例如：customer_name, phone_number, created_at）
+- **组件属性**: 使用 camelCase 命名
+- **API 响应**: 保持与后端一致的 snake_case 字段命名
+
+## Customer 数据结构
+客户对象应遵循以下接口定义：
+```typescript
+interface Customer {
+  id: string
+  name: string
+  email: string
+  phone: string
+  address: string
+  lat: number          // 纬度
+  lng: number          // 经度
+  company?: string
+  tags: string[]
+  createdAt: Date
+}
+```
+
+## Google Maps 集成
+- 坐标字段使用 lat/lng 命名
+- 地址字段存储完整地址字符串
+- 通过 Google Geocoding API 自动获取坐标

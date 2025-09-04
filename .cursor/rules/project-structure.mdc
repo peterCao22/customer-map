@@ -1,0 +1,29 @@
+---
+alwaysApply: true
+description: Customer Address Management System project structure and overview
+---
+
+# 客户地址管理系统项目结构
+
+这是一个基于 Google Maps API 的客户地址管理系统。
+
+## 核心架构
+- **前端**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
+- **后端**: Python FastAPI ([main.py](mdc:backend/main.py), [models.py](mdc:backend/models.py))
+- **地图服务**: Google Maps JavaScript API
+- **包管理器**: 使用 pnpm 而非 npm
+
+## 主要组件
+- [customer-map-view.tsx](mdc:components/customer-map-view.tsx) - 主视图组件，管理状态和布局
+- [google-map.tsx](mdc:components/google-map.tsx) - Google Maps 集成组件
+- [customer-search.tsx](mdc:components/customer-search.tsx) - 搜索和过滤功能
+- [customer-list.tsx](mdc:components/customer-list.tsx) - 客户列表显示
+
+## 入口文件
+- [app/page.tsx](mdc:app/page.tsx) - 主页面
+- [app/layout.tsx](mdc:app/layout.tsx) - 根布局
+
+## 配置文件
+- [next.config.mjs](mdc:next.config.mjs) - Next.js 配置
+- [tailwind.config.ts](mdc:tailwind.config.ts) - Tailwind CSS 配置
+- [components.json](mdc:components.json) - shadcn/ui 组件配置

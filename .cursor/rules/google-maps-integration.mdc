@@ -1,0 +1,31 @@
+---
+globs: *.tsx,*.ts
+description: Google Maps integration patterns and component guidelines
+---
+
+# Google Maps 集成指南
+
+## 核心组件模式
+- [google-map.tsx](mdc:components/google-map.tsx) - 封装 Google Maps JavaScript API
+- [customer-map-view.tsx](mdc:components/customer-map-view.tsx) - 主要的地图视图容器
+
+## 地图功能要求
+1. **标记渲染**: 显示所有客户地址标记
+2. **信息窗口**: 点击标记显示客户详细信息
+3. **自动缩放**: 调整地图视图包含所有标记
+4. **响应式**: 支持移动端触摸操作
+
+## 坐标处理
+- 使用 Google Geocoding API 将地址转换为坐标
+- 坐标字段: `lat` (纬度), `lng` (经度)
+- 缓存坐标结果避免重复API调用
+
+## 搜索和过滤集成
+- 地图标记需要与搜索结果同步
+- 支持标签过滤功能
+- 实时更新地图显示的标记
+
+## 组件间通信
+- 地图选择 ↔ 客户列表选择
+- 搜索过滤 → 地图标记更新
+- 侧边栏折叠 → 地图尺寸调整

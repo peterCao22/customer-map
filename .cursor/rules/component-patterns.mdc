@@ -1,0 +1,41 @@
+---
+globs: components/*.tsx
+description: Component architecture and UI patterns for the customer management system
+---
+
+# 组件架构模式
+
+## 组件层次结构
+```
+CustomerMapView (主容器)
+├── CustomerSearch (搜索过滤)
+├── GoogleMap (地图显示)  
+└── CustomerList (客户列表)
+```
+
+## UI 组件库
+使用 shadcn/ui 组件系统 ([components/ui/](mdc:components/ui/)):
+- 保持一致的设计语言
+- 支持明暗主题切换
+- 可访问性支持
+- TypeScript 类型安全
+
+## 响应式设计原则
+- **移动优先**: 设计适配移动端
+- **可折叠侧边栏**: 小屏幕上可隐藏客户列表
+- **触摸友好**: 交互元素适合触摸操作
+
+## 状态管理模式
+- 主要状态在 [customer-map-view.tsx](mdc:components/customer-map-view.tsx) 中管理
+- 客户数据、搜索条件、选中客户等状态
+- 通过 props 向子组件传递数据和回调
+
+## 搜索和过滤功能
+- 实时搜索: 支持姓名、邮箱、公司、地址
+- 标签过滤: 多标签组合过滤
+- 搜索结果同步更新地图和列表
+
+## 样式约定
+- 使用 Tailwind CSS 进行样式设计
+- 遵循 shadcn/ui 的设计系统
+- CSS 变量用于主题切换
