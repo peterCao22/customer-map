@@ -567,6 +567,17 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         return
       }
 
+      // 延迟创建标记，提高性能
+      requestAnimationFrame(() => {
+        createMarkersInternal()
+      })
+    }
+
+    const createMarkersInternal = () => {
+      if (!mapInstanceRef.current || !window.google?.maps || !customers?.length) {
+        return
+      }
+
       try {
         // 清除现有标记和圆形覆盖层
         markersRef.current.forEach((marker) => marker.setMap(null))
@@ -702,8 +713,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
     }, [currentZoom, customers])
 
     useEffect(() => {
-      createMarkers()
-    }, [customers, selectedCustomer, onCustomerSelect])
+      if (currentZoom >= 6) {
+        createMarkers()
+      }
+    }, [customers, selectedCustomer, onCustomerSelect, currentZoom])
 
     // 当选中客户改变时，移动地图中心
     useEffect(() => {

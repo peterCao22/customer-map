@@ -197,7 +197,7 @@ export function CustomerMapView() {
     try {
       setError(null)
       // 加载所有有效的客户数据
-      const data = await fetchCustomers(1000)
+      const data = await fetchCustomers(500) // 减少初始加载量，提高速度
       setCustomers(data)
       
       // 根据战略客户筛选状态应用过滤

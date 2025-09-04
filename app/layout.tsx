@@ -8,10 +8,9 @@ export const metadata: Metadata = {
   description: '基于Google Maps的客户地址管理和可视化系统',
   generator: 'Next.js',
   icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
-      { url: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }
-    ],
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
   },
 }
 
