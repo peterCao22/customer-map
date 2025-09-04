@@ -153,10 +153,18 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       "DC": 689545,   // 华盛顿特区
     }
 
-    // 根据人口数量获取州级黄色系颜色（增强对比度）
+    // 根据人口数量获取州级颜色（仅美国州按人口着色）
     const getStatePopulationColor = (stateAbbr: string) => {
-      const population = STATE_POPULATION_DATA[stateAbbr] || 0
-      if (population === 0) return '#f8f9fa' // 无数据时为浅灰色
+      // 检查是否为美国州（在人口数据中存在）
+      const population = STATE_POPULATION_DATA[stateAbbr]
+      
+      if (!population || population === 0) {
+        // 非美国州或无人口数据，使用统一的浅灰色
+        console.log(`🌍 非美国地区 ${stateAbbr}: 使用统一颜色`)
+        return '#E8E8E8' // 统一浅灰色（加拿大省份等）
+      }
+      
+      console.log(`🇺🇸 美国州 ${stateAbbr}: 人口 ${population.toLocaleString()}`)
       
       const maxPopulation = Math.max(...Object.values(STATE_POPULATION_DATA)) // 约3950万（CA）
       const intensity = population / maxPopulation
@@ -218,7 +226,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         const stateStats = getCustomersByState()
         const maxCount = Math.max(...Array.from(stateStats.values()), 1)
         
-        console.log('🔄 使用精确州边界降级方案（Boot Camp兼容）...')
+        console.log('🔄 Boot Camp兼容模式：美国州按人口着色，非美国地区统一灰色...')
         
         // 精确的美国州边界坐标数据（简化但准确的多边形）
         const statePolygonData: { [stateAbbr: string]: { lat: number; lng: number }[] } = {
@@ -462,15 +470,30 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             // 判断是否为加拿大省份
             const isCanadianProvince = ['ON', 'QC', 'BC'].includes(stateAbbr)
             const regionType = isCanadianProvince ? '省' : '州'
+            const isUSState = !!STATE_POPULATION_DATA[stateAbbr]
             
-            const infoContent = `
-              <div style="padding: 8px; font-family: system-ui;">
-                <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}${regionType}</h3>
-                <p style="margin: 0; color: #4b5563;">人口数量: ${population.toLocaleString()}</p>
-                <p style="margin: 4px 0 0 0; color: #6b7280;">客户数量: ${customerCount}</p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式（按人口着色）</p>
-              </div>
-            `
+            let infoContent = ''
+            
+            if (isUSState) {
+              // 美国州：显示人口和客户信息
+              infoContent = `
+                <div style="padding: 8px; font-family: system-ui;">
+                  <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}${regionType}</h3>
+                  <p style="margin: 0; color: #4b5563;">人口数量: ${population.toLocaleString()}</p>
+                  <p style="margin: 4px 0 0 0; color: #6b7280;">客户数量: ${customerCount}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式（按人口着色）</p>
+                </div>
+              `
+            } else {
+              // 非美国地区：只显示客户信息
+              infoContent = `
+                <div style="padding: 8px; font-family: system-ui;">
+                  <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}${regionType}</h3>
+                  <p style="margin: 0; color: #6b7280;">客户数量: ${customerCount}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式（统一颜色）</p>
+                </div>
+              `
+            }
             
             if (infoWindowRef.current) {
               infoWindowRef.current.close()
@@ -518,7 +541,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           }
         })
         
-        console.log(`✅ 精确州边界降级方案完成: 创建 ${statePolygonsRef.current.length} 个州边界和标签`)
+        console.log(`✅ Boot Camp模式完成: ${statePolygonsRef.current.length} 个边界 (美国州按人口着色，其他统一灰色)`)
         
       } catch (error) {
         console.error('❌ Polygon州边界创建失败:', error)
@@ -626,9 +649,11 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             
             const stateAbbr = placeIdToStateMap[placeId] || ''
             
-            console.log(`🎨 正常模式样式设置 - ${stateAbbr}: 复用人口着色逻辑`)
+            if (stateAbbr) {
+              console.log(`🎨 正常模式样式设置 - ${stateAbbr}: ${STATE_POPULATION_DATA[stateAbbr] ? '美国州按人口着色' : '非美国地区统一着色'}`)
+            }
           
-          // 复用正常模式的人口着色逻辑，统一按人口数量
+          // 复用人口着色逻辑：美国州按人口，其他地区统一颜色
           const fillColor = getStatePopulationColor(stateAbbr)
           
           return {
