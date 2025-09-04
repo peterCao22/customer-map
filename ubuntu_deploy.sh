@@ -53,12 +53,26 @@ check_requirements() {
         npm install -g pnpm
     fi
     
-    # 检查Python
-    if ! command -v python3.11 &> /dev/null; then
-        print_error "Python 3.11 未安装"
-        print_status "安装Python 3.11..."
+    # 检查Python (支持3.8+版本)
+    if command -v python3 &> /dev/null; then
+        PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+        print_status "✅ 检测到Python版本: $PYTHON_VERSION"
+        
+        # 检查版本是否满足要求 (>= 3.8)
+        PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+        PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+        
+        if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 8 ]; then
+            print_status "✅ Python版本满足要求 (>= 3.8)"
+        else
+            print_error "❌ Python版本过低，需要 >= 3.8"
+            exit 1
+        fi
+    else
+        print_error "❌ Python 3 未安装"
+        print_status "安装Python 3..."
         sudo apt update
-        sudo apt install python3.11 python3.11-venv python3-pip -y
+        sudo apt install python3 python3-venv python3-pip -y
     fi
     
     # 检查PM2
@@ -215,7 +229,7 @@ EOF
     # 创建虚拟环境
     if [ ! -d "venv" ]; then
         print_status "创建Python虚拟环境..."
-        python3.11 -m venv venv
+        python3 -m venv venv
     fi
     
     # 安装依赖

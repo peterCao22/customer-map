@@ -33,8 +33,8 @@ sudo apt-get install -y nodejs
 # 安装pnpm
 npm install -g pnpm
 
-# 安装Python 3.11
-sudo apt install python3.11 python3.11-venv python3-pip -y
+# 安装Python 3.10+ (如果没有的话)
+sudo apt install python3 python3-venv python3-pip -y
 
 # 安装PM2 (进程管理器)
 npm install -g pm2
@@ -224,7 +224,7 @@ deploy_backend() {
     # 创建Python虚拟环境
     if [ ! -d "venv" ]; then
         print_status "创建Python虚拟环境..."
-        python3.11 -m venv venv
+        python3 -m venv venv
     fi
     
     # 激活虚拟环境并安装依赖

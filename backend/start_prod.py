@@ -2,6 +2,7 @@
 """
 Ubuntu服务器生产环境启动脚本
 专门针对config_prod.py配置文件
+支持Python 3.8+ (测试环境: Python 3.10.12)
 """
 
 import uvicorn
