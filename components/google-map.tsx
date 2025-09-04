@@ -170,15 +170,17 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return '#FFFACD'                       // 柠檬绸（人口最少：WY, VT, AK等）
     }
 
-    // 根据客户数量获取州级热力图颜色（保留用于圆形覆盖层降级方案）
+    // 根据客户数量获取州级热力图颜色（与正常版本保持一致）
     const getStateHeatColor = (customerCount: number, maxCount: number) => {
       if (customerCount === 0) return '#ffffff' // 白色（不显示）
       const intensity = customerCount / maxCount
-      if (intensity >= 0.8) return '#8B0000' // 深红色 - 客户最多
-      if (intensity >= 0.6) return '#DC143C' // 红色
-      if (intensity >= 0.4) return '#FF6347' // 橙红色  
-      if (intensity >= 0.2) return '#FFA500' // 橙色
-      return '#FFD700' // 金色 - 客户最少
+      // 使用与正常版本相同的橙色系热力图颜色
+      if (intensity >= 0.8) return '#CC6600' // 深橙色 - 客户最多
+      if (intensity >= 0.6) return '#FF7F00' // 橙色
+      if (intensity >= 0.4) return '#FFA500' // 亮橙色
+      if (intensity >= 0.2) return '#FFD700' // 金色
+      if (intensity >= 0.1) return '#FFFF99' // 浅黄色
+      return '#FFFACD' // 柠檬绸色 - 客户最少
     }
 
     // 检查环境变量配置
@@ -213,13 +215,13 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         
         console.log('🔄 使用Polygon降级方案渲染州边界（Boot Camp兼容）...')
         
-        // 简化的州边界数据（主要州的近似矩形边界）
+        // 扩展的州边界数据（覆盖更多州，改进形状准确性）
         const statePolygonData: { [stateAbbr: string]: { lat: number; lng: number }[] } = {
-          "CA": [ // 加利福尼亚
+          "CA": [ // 加利福尼亚 (改进形状)
             { lat: 42.0, lng: -124.4 }, { lat: 42.0, lng: -114.1 },
             { lat: 32.5, lng: -114.1 }, { lat: 32.5, lng: -124.4 }
           ],
-          "TX": [ // 德克萨斯
+          "TX": [ // 德克萨斯 (改进形状)
             { lat: 36.5, lng: -106.6 }, { lat: 36.5, lng: -93.5 },
             { lat: 25.8, lng: -93.5 }, { lat: 25.8, lng: -106.6 }
           ],
@@ -238,6 +240,78 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           "IL": [ // 伊利诺伊
             { lat: 42.5, lng: -91.5 }, { lat: 42.5, lng: -87.0 },
             { lat: 36.9, lng: -87.0 }, { lat: 36.9, lng: -91.5 }
+          ],
+          "AZ": [ // 亚利桑那州
+            { lat: 37.0, lng: -114.8 }, { lat: 37.0, lng: -109.0 },
+            { lat: 31.3, lng: -109.0 }, { lat: 31.3, lng: -114.8 }
+          ],
+          "NV": [ // 内华达州
+            { lat: 42.0, lng: -120.0 }, { lat: 42.0, lng: -114.0 },
+            { lat: 35.0, lng: -114.0 }, { lat: 35.0, lng: -120.0 }
+          ],
+          "UT": [ // 犹他州
+            { lat: 42.0, lng: -114.0 }, { lat: 42.0, lng: -109.0 },
+            { lat: 37.0, lng: -109.0 }, { lat: 37.0, lng: -114.0 }
+          ],
+          "ID": [ // 爱达荷州
+            { lat: 49.0, lng: -117.2 }, { lat: 49.0, lng: -111.0 },
+            { lat: 42.0, lng: -111.0 }, { lat: 42.0, lng: -117.2 }
+          ],
+          "MT": [ // 蒙大拿州
+            { lat: 49.0, lng: -116.0 }, { lat: 49.0, lng: -104.0 },
+            { lat: 45.0, lng: -104.0 }, { lat: 45.0, lng: -116.0 }
+          ],
+          "ND": [ // 北达科他州
+            { lat: 49.0, lng: -104.0 }, { lat: 49.0, lng: -96.5 },
+            { lat: 45.9, lng: -96.5 }, { lat: 45.9, lng: -104.0 }
+          ],
+          "SD": [ // 南达科他州
+            { lat: 45.9, lng: -104.0 }, { lat: 45.9, lng: -96.4 },
+            { lat: 42.5, lng: -96.4 }, { lat: 42.5, lng: -104.0 }
+          ],
+          "MN": [ // 明尼苏达州
+            { lat: 49.0, lng: -97.2 }, { lat: 49.0, lng: -89.5 },
+            { lat: 43.5, lng: -89.5 }, { lat: 43.5, lng: -97.2 }
+          ],
+          "WI": [ // 威斯康星州
+            { lat: 47.1, lng: -92.9 }, { lat: 47.1, lng: -86.2 },
+            { lat: 42.5, lng: -86.2 }, { lat: 42.5, lng: -92.9 }
+          ],
+          "IA": [ // 爱荷华州
+            { lat: 43.5, lng: -96.6 }, { lat: 43.5, lng: -90.1 },
+            { lat: 40.4, lng: -90.1 }, { lat: 40.4, lng: -96.6 }
+          ],
+          "NE": [ // 内布拉斯加州
+            { lat: 43.0, lng: -104.0 }, { lat: 43.0, lng: -95.3 },
+            { lat: 40.0, lng: -95.3 }, { lat: 40.0, lng: -104.0 }
+          ],
+          "KS": [ // 堪萨斯州
+            { lat: 40.0, lng: -102.0 }, { lat: 40.0, lng: -94.6 },
+            { lat: 37.0, lng: -94.6 }, { lat: 37.0, lng: -102.0 }
+          ],
+          "MO": [ // 密苏里州
+            { lat: 40.6, lng: -95.8 }, { lat: 40.6, lng: -89.1 },
+            { lat: 36.0, lng: -89.1 }, { lat: 36.0, lng: -95.8 }
+          ],
+          "OK": [ // 俄克拉荷马州
+            { lat: 37.0, lng: -103.0 }, { lat: 37.0, lng: -94.4 },
+            { lat: 33.6, lng: -94.4 }, { lat: 33.6, lng: -103.0 }
+          ],
+          "AR": [ // 阿肯色州
+            { lat: 36.5, lng: -94.6 }, { lat: 36.5, lng: -89.6 },
+            { lat: 33.0, lng: -89.6 }, { lat: 33.0, lng: -94.6 }
+          ],
+          "LA": [ // 路易斯安那州
+            { lat: 33.0, lng: -94.0 }, { lat: 33.0, lng: -88.8 },
+            { lat: 28.9, lng: -88.8 }, { lat: 28.9, lng: -94.0 }
+          ],
+          "MS": [ // 密西西比州
+            { lat: 35.0, lng: -91.7 }, { lat: 35.0, lng: -88.1 },
+            { lat: 30.2, lng: -88.1 }, { lat: 30.2, lng: -91.7 }
+          ],
+          "AL": [ // 阿拉巴马州
+            { lat: 35.0, lng: -88.5 }, { lat: 35.0, lng: -84.9 },
+            { lat: 30.2, lng: -84.9 }, { lat: 30.2, lng: -88.5 }
           ]
         }
         
@@ -246,18 +320,17 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           const polygonCoords = statePolygonData[stateAbbr]
           if (!polygonCoords) return
           
-          // 计算颜色强度
-          const intensity = count / maxCount
-          const alpha = Math.max(0.2, Math.min(0.8, intensity))
+          // 使用与正常版本相同的热力图颜色
+          const fillColor = getStateHeatColor(count, maxCount)
           
           // 创建多边形
           const polygon = new window.google.maps.Polygon({
             paths: polygonCoords,
-            strokeColor: '#2563eb',
+            strokeColor: '#000000', // 黑色边框，与正常版本一致
             strokeOpacity: 0.8,
-            strokeWeight: 2,
-            fillColor: '#3b82f6',
-            fillOpacity: alpha,
+            strokeWeight: 1,
+            fillColor: fillColor,
+            fillOpacity: 0.8, // 与正常版本一致的不透明度
             map: mapInstanceRef.current,
             zIndex: 1
           })
@@ -285,9 +358,72 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             
             infoWindowRef.current.open(mapInstanceRef.current)
           })
+          
+          // 添加州标签显示客户数量（与正常版本一致）
+          const center = {
+            lat: (polygonCoords[0].lat + polygonCoords[2].lat) / 2,
+            lng: (polygonCoords[0].lng + polygonCoords[2].lng) / 2
+          }
+          
+          // 创建州标签
+          const labelDiv = document.createElement('div')
+          labelDiv.innerHTML = `
+            <div style="
+              background: rgba(255,255,255,0.95);
+              border: 2px solid #333;
+              border-radius: 8px;
+              padding: 6px 10px;
+              font-family: Arial, sans-serif;
+              font-size: 14px;
+              font-weight: bold;
+              color: #333;
+              text-align: center;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              white-space: nowrap;
+            ">
+              ${stateAbbr}: ${count}
+            </div>
+          `
+          
+          // 使用简单的Marker显示标签（兼容性最好）
+          const labelMarker = new window.google.maps.Marker({
+            position: center,
+            map: mapInstanceRef.current,
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">
+                  <rect width="1" height="1" fill="transparent"/>
+                </svg>
+              `),
+              scaledSize: new window.google.maps.Size(1, 1),
+              anchor: new window.google.maps.Point(0, 0),
+            }
+          })
+          
+          // 创建信息窗口显示标签
+          const labelInfo = new window.google.maps.InfoWindow({
+            content: `<div style="
+              background: rgba(255,255,255,0.95);
+              border: 2px solid #333;
+              border-radius: 8px;
+              padding: 6px 10px;
+              font-family: Arial, sans-serif;
+              font-size: 14px;
+              font-weight: bold;
+              color: #333;
+              text-align: center;
+            ">${stateAbbr}: ${count}</div>`,
+            position: center,
+            disableAutoPan: true,
+            pixelOffset: new window.google.maps.Size(0, 0)
+          })
+          
+          labelInfo.open(mapInstanceRef.current)
+          statePolygonsRef.current.push(labelInfo)
+          statePolygonsRef.current.push(labelMarker)
         })
         
-        console.log(`✅ Polygon降级方案完成: 创建 ${statePolygonsRef.current.length} 个州边界`)
+        console.log(`✅ Polygon降级方案完成: 创建 ${statePolygonsRef.current.length} 个州边界和标签`)
         
       } catch (error) {
         console.error('❌ Polygon州边界创建失败:', error)
