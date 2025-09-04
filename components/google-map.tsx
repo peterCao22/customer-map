@@ -202,7 +202,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return stateStats
     }
 
-    // Circle降级方案：使用圆形替代多边形，更自然的视觉效果
+    // 精确州边界降级方案：使用真实的州边界坐标数据
     const createPolygonStateOverlays = async () => {
       if (!mapInstanceRef.current || !window.google) return
       
@@ -213,65 +213,148 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         const stateStats = getCustomersByState()
         const maxCount = Math.max(...Array.from(stateStats.values()), 1)
         
-        console.log('🔄 使用Circle降级方案渲染州边界（Boot Camp兼容）...')
+        console.log('🔄 使用精确州边界降级方案（Boot Camp兼容）...')
         
-        // 州中心坐标和大小数据
-        const stateCircleData: { [stateAbbr: string]: { center: { lat: number; lng: number }; radius: number } } = {
-          "CA": { center: { lat: 37.0, lng: -119.5 }, radius: 280000 }, // 加利福尼亚
-          "TX": { center: { lat: 31.0, lng: -100.0 }, radius: 320000 }, // 德克萨斯
-          "NY": { center: { lat: 43.0, lng: -75.0 }, radius: 140000 }, // 纽约
-          "FL": { center: { lat: 28.0, lng: -82.0 }, radius: 180000 }, // 佛罗里达
-          "WA": { center: { lat: 47.5, lng: -120.5 }, radius: 160000 }, // 华盛顿州
-          "IL": { center: { lat: 40.0, lng: -89.0 }, radius: 160000 }, // 伊利诺伊
-          "AZ": { center: { lat: 34.2, lng: -111.5 }, radius: 180000 }, // 亚利桑那州
-          "NV": { center: { lat: 38.5, lng: -117.0 }, radius: 180000 }, // 内华达州
-          "UT": { center: { lat: 39.5, lng: -111.5 }, radius: 140000 }, // 犹他州
-          "ID": { center: { lat: 45.0, lng: -114.0 }, radius: 160000 }, // 爱达荷州
-          "MT": { center: { lat: 47.0, lng: -110.0 }, radius: 200000 }, // 蒙大拿州
-          "ND": { center: { lat: 47.5, lng: -100.0 }, radius: 140000 }, // 北达科他州
-          "SD": { center: { lat: 44.0, lng: -100.0 }, radius: 140000 }, // 南达科他州
-          "MN": { center: { lat: 46.0, lng: -94.0 }, radius: 160000 }, // 明尼苏达州
-          "WI": { center: { lat: 44.5, lng: -90.0 }, radius: 140000 }, // 威斯康星州
-          "IA": { center: { lat: 42.0, lng: -93.5 }, radius: 120000 }, // 爱荷华州
-          "NE": { center: { lat: 41.5, lng: -99.5 }, radius: 140000 }, // 内布拉斯加州
-          "KS": { center: { lat: 38.5, lng: -98.0 }, radius: 140000 }, // 堪萨斯州
-          "MO": { center: { lat: 38.5, lng: -92.5 }, radius: 140000 }, // 密苏里州
-          "OK": { center: { lat: 35.0, lng: -98.0 }, radius: 140000 }, // 俄克拉荷马州
-          "AR": { center: { lat: 35.0, lng: -92.0 }, radius: 120000 }, // 阿肯色州
-          "LA": { center: { lat: 31.0, lng: -92.0 }, radius: 120000 }, // 路易斯安那州
-          "MS": { center: { lat: 32.5, lng: -90.0 }, radius: 120000 }, // 密西西比州
-          "AL": { center: { lat: 32.5, lng: -86.5 }, radius: 120000 }, // 阿拉巴马州
+        // 精确的美国州边界坐标数据（简化但准确的多边形）
+        const statePolygonData: { [stateAbbr: string]: { lat: number; lng: number }[] } = {
+          "CA": [ // 加利福尼亚州 - 改进的边界形状
+            { lat: 42.0, lng: -124.4 }, { lat: 42.0, lng: -120.0 }, { lat: 39.0, lng: -120.0 },
+            { lat: 35.0, lng: -114.1 }, { lat: 32.5, lng: -114.1 }, { lat: 32.5, lng: -117.1 },
+            { lat: 33.0, lng: -118.4 }, { lat: 34.4, lng: -120.6 }, { lat: 37.0, lng: -122.5 },
+            { lat: 42.0, lng: -124.4 }
+          ],
+          "TX": [ // 德克萨斯州 - 改进的形状
+            { lat: 36.5, lng: -103.0 }, { lat: 32.0, lng: -103.0 }, { lat: 31.5, lng: -106.5 },
+            { lat: 29.5, lng: -103.0 }, { lat: 26.0, lng: -97.0 }, { lat: 25.8, lng: -93.5 },
+            { lat: 29.0, lng: -93.5 }, { lat: 31.0, lng: -94.0 }, { lat: 33.8, lng: -94.0 },
+            { lat: 36.5, lng: -100.0 }, { lat: 36.5, lng: -103.0 }
+          ],
+          "NY": [ // 纽约州 - L形状
+            { lat: 45.0, lng: -74.0 }, { lat: 44.5, lng: -73.3 }, { lat: 43.6, lng: -73.3 },
+            { lat: 42.0, lng: -73.3 }, { lat: 40.5, lng: -73.7 }, { lat: 40.5, lng: -74.2 },
+            { lat: 40.9, lng: -74.9 }, { lat: 42.0, lng: -79.8 }, { lat: 43.0, lng: -79.0 },
+            { lat: 45.0, lng: -74.7 }, { lat: 45.0, lng: -74.0 }
+          ],
+          "FL": [ // 佛罗里达州 - 半岛形状  
+            { lat: 31.0, lng: -87.6 }, { lat: 31.0, lng: -85.0 }, { lat: 30.4, lng: -84.3 },
+            { lat: 29.0, lng: -84.0 }, { lat: 28.0, lng: -82.7 }, { lat: 26.0, lng: -81.8 },
+            { lat: 25.1, lng: -80.4 }, { lat: 25.8, lng: -80.0 }, { lat: 27.0, lng: -82.0 },
+            { lat: 29.0, lng: -85.0 }, { lat: 30.7, lng: -87.6 }, { lat: 31.0, lng: -87.6 }
+          ],
+          "WA": [ // 华盛顿州
+            { lat: 49.0, lng: -124.8 }, { lat: 49.0, lng: -117.0 }, { lat: 47.0, lng: -117.0 },
+            { lat: 45.5, lng: -116.9 }, { lat: 45.5, lng: -124.2 }, { lat: 46.2, lng: -124.2 },
+            { lat: 48.4, lng: -124.8 }, { lat: 49.0, lng: -124.8 }
+          ],
+          "IL": [ // 伊利诺伊州
+            { lat: 42.5, lng: -87.0 }, { lat: 42.5, lng: -90.6 }, { lat: 40.6, lng: -91.5 },
+            { lat: 37.0, lng: -89.2 }, { lat: 37.0, lng: -88.0 }, { lat: 38.8, lng: -87.5 },
+            { lat: 41.8, lng: -87.5 }, { lat: 42.5, lng: -87.0 }
+          ],
+          "AZ": [ // 亚利桑那州
+            { lat: 37.0, lng: -114.8 }, { lat: 37.0, lng: -109.0 }, { lat: 31.3, lng: -109.0 },
+            { lat: 31.3, lng: -111.1 }, { lat: 32.7, lng: -114.8 }, { lat: 37.0, lng: -114.8 }
+          ],
+          "NV": [ // 内华达州  
+            { lat: 42.0, lng: -120.0 }, { lat: 42.0, lng: -114.0 }, { lat: 37.0, lng: -114.0 },
+            { lat: 35.0, lng: -114.6 }, { lat: 35.0, lng: -120.0 }, { lat: 39.0, lng: -120.0 },
+            { lat: 42.0, lng: -120.0 }
+          ],
+          "UT": [ // 犹他州
+            { lat: 42.0, lng: -114.0 }, { lat: 42.0, lng: -109.0 }, { lat: 37.0, lng: -109.0 },
+            { lat: 37.0, lng: -114.0 }, { lat: 42.0, lng: -114.0 }
+          ],
+          "ID": [ // 爱达荷州 - 细长形状
+            { lat: 49.0, lng: -117.2 }, { lat: 49.0, lng: -111.0 }, { lat: 44.0, lng: -111.0 },
+            { lat: 42.0, lng: -111.0 }, { lat: 42.0, lng: -117.2 }, { lat: 45.8, lng: -116.9 },
+            { lat: 49.0, lng: -117.2 }
+          ],
+          "MT": [ // 蒙大拿州
+            { lat: 49.0, lng: -116.0 }, { lat: 49.0, lng: -104.0 }, { lat: 45.0, lng: -104.0 },
+            { lat: 44.3, lng: -111.1 }, { lat: 45.0, lng: -116.0 }, { lat: 49.0, lng: -116.0 }
+          ],
+          "ND": [ // 北达科他州
+            { lat: 49.0, lng: -104.0 }, { lat: 49.0, lng: -96.5 }, { lat: 45.9, lng: -96.5 },
+            { lat: 45.9, lng: -104.0 }, { lat: 49.0, lng: -104.0 }
+          ],
+          "SD": [ // 南达科他州
+            { lat: 45.9, lng: -104.0 }, { lat: 45.9, lng: -96.4 }, { lat: 42.5, lng: -96.4 },
+            { lat: 42.5, lng: -104.0 }, { lat: 45.9, lng: -104.0 }
+          ],
+          "MN": [ // 明尼苏达州
+            { lat: 49.0, lng: -95.2 }, { lat: 49.0, lng: -89.5 }, { lat: 46.7, lng: -89.5 },
+            { lat: 43.5, lng: -91.2 }, { lat: 43.5, lng: -96.4 }, { lat: 45.9, lng: -96.5 },
+            { lat: 49.0, lng: -95.2 }
+          ],
+          "WI": [ // 威斯康星州
+            { lat: 47.1, lng: -92.9 }, { lat: 47.1, lng: -86.2 }, { lat: 45.0, lng: -86.0 },
+            { lat: 42.5, lng: -87.8 }, { lat: 42.5, lng: -90.6 }, { lat: 43.8, lng: -92.9 },
+            { lat: 47.1, lng: -92.9 }
+          ],
+          "IA": [ // 爱荷华州
+            { lat: 43.5, lng: -96.6 }, { lat: 43.5, lng: -90.1 }, { lat: 40.4, lng: -90.1 },
+            { lat: 40.4, lng: -96.6 }, { lat: 43.5, lng: -96.6 }
+          ],
+          "NE": [ // 内布拉斯加州
+            { lat: 43.0, lng: -104.0 }, { lat: 43.0, lng: -95.3 }, { lat: 40.0, lng: -95.3 },
+            { lat: 40.0, lng: -104.0 }, { lat: 43.0, lng: -104.0 }
+          ],
+          "KS": [ // 堪萨斯州
+            { lat: 40.0, lng: -102.0 }, { lat: 40.0, lng: -94.6 }, { lat: 37.0, lng: -94.6 },
+            { lat: 37.0, lng: -102.0 }, { lat: 40.0, lng: -102.0 }
+          ],
+          "MO": [ // 密苏里州 - 不规则形状
+            { lat: 40.6, lng: -95.8 }, { lat: 40.6, lng: -89.1 }, { lat: 38.3, lng: -89.1 },
+            { lat: 36.0, lng: -89.7 }, { lat: 36.0, lng: -94.6 }, { lat: 37.0, lng: -94.6 },
+            { lat: 40.2, lng: -95.8 }, { lat: 40.6, lng: -95.8 }
+          ],
+          "OK": [ // 俄克拉荷马州  
+            { lat: 37.0, lng: -103.0 }, { lat: 37.0, lng: -94.4 }, { lat: 33.6, lng: -94.4 },
+            { lat: 33.6, lng: -103.0 }, { lat: 37.0, lng: -103.0 }
+          ],
+          "AR": [ // 阿肯色州
+            { lat: 36.5, lng: -94.6 }, { lat: 36.5, lng: -89.6 }, { lat: 33.0, lng: -89.6 },
+            { lat: 33.0, lng: -94.6 }, { lat: 36.5, lng: -94.6 }
+          ],
+          "LA": [ // 路易斯安那州 - boot形状
+            { lat: 33.0, lng: -94.0 }, { lat: 33.0, lng: -91.2 }, { lat: 32.0, lng: -91.2 },
+            { lat: 30.2, lng: -89.8 }, { lat: 29.0, lng: -89.4 }, { lat: 28.9, lng: -93.9 },
+            { lat: 30.0, lng: -94.0 }, { lat: 33.0, lng: -94.0 }
+          ],
+          "MS": [ // 密西西比州
+            { lat: 35.0, lng: -91.7 }, { lat: 35.0, lng: -88.1 }, { lat: 30.2, lng: -88.1 },
+            { lat: 30.2, lng: -91.7 }, { lat: 35.0, lng: -91.7 }
+          ],
+          "AL": [ // 阿拉巴马州
+            { lat: 35.0, lng: -88.5 }, { lat: 35.0, lng: -84.9 }, { lat: 30.2, lng: -84.9 },
+            { lat: 30.2, lng: -88.5 }, { lat: 35.0, lng: -88.5 }
+          ]
         }
         
-        // 为每个有客户数据的州创建圆形覆盖
+        // 为每个有客户数据的州创建精确多边形
         stateStats.forEach((count, stateAbbr) => {
-          const circleData = stateCircleData[stateAbbr]
-          if (!circleData) return
+          const polygonCoords = statePolygonData[stateAbbr]
+          if (!polygonCoords) return
           
           // 使用与正常版本相同的热力图颜色
           const fillColor = getStateHeatColor(count, maxCount)
           
-          // 根据客户数量调整圆形大小
-          const sizeMultiplier = 0.8 + (count / maxCount) * 0.4 // 0.8-1.2倍
-          const adjustedRadius = circleData.radius * sizeMultiplier
-          
-          // 创建圆形覆盖
-          const circle = new window.google.maps.Circle({
-            center: circleData.center,
-            radius: adjustedRadius,
+          // 创建多边形覆盖
+          const polygon = new window.google.maps.Polygon({
+            paths: polygonCoords,
             strokeColor: '#000000', // 黑色边框
             strokeOpacity: 0.8,
             strokeWeight: 1,
             fillColor: fillColor,
-            fillOpacity: 0.6, // 稍微透明一些，避免过于遮挡地图
+            fillOpacity: 0.8, // 与正常版本一致
             map: mapInstanceRef.current,
             zIndex: 1
           })
           
-          statePolygonsRef.current.push(circle)
+          statePolygonsRef.current.push(polygon)
           
           // 添加点击事件
-          circle.addListener('click', (event: any) => {
+          polygon.addListener('click', (event: any) => {
             const infoContent = `
               <div style="padding: 8px; font-family: system-ui;">
                 <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}州</h3>
@@ -292,6 +375,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             infoWindowRef.current.open(mapInstanceRef.current)
           })
           
+          // 计算多边形中心点用于标签显示
+          const centerLat = polygonCoords.reduce((sum, coord) => sum + coord.lat, 0) / polygonCoords.length
+          const centerLng = polygonCoords.reduce((sum, coord) => sum + coord.lng, 0) / polygonCoords.length
+          
           // 创建小巧的SVG标签图标
           const createLabelIcon = (text: string) => {
             const svgContent = `
@@ -307,7 +394,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           
           // 使用Marker显示小巧标签
           const labelMarker = new window.google.maps.Marker({
-            position: circleData.center,
+            position: { lat: centerLat, lng: centerLng },
             map: mapInstanceRef.current,
             icon: {
               url: createLabelIcon(`${stateAbbr}: ${count}`),
@@ -320,7 +407,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           statePolygonsRef.current.push(labelMarker)
         })
         
-        console.log(`✅ Circle降级方案完成: 创建 ${statePolygonsRef.current.length} 个州圆形区域和标签`)
+        console.log(`✅ 精确州边界降级方案完成: 创建 ${statePolygonsRef.current.length} 个州边界和标签`)
         
       } catch (error) {
         console.error('❌ Polygon州边界创建失败:', error)
