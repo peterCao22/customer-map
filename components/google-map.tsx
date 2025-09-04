@@ -159,9 +159,9 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       const population = STATE_POPULATION_DATA[stateAbbr]
       
       if (!population || population === 0) {
-        // 非美国州或无人口数据，使用统一的浅灰色
-        console.log(`🌍 非美国地区 ${stateAbbr}: 使用统一颜色`)
-        return '#E8E8E8' // 统一浅灰色（加拿大省份等）
+        // 非美国州或无人口数据，使用透明色（保持地图默认）
+        console.log(`🌍 非美国地区 ${stateAbbr}: 使用透明色（地图默认）`)
+        return 'transparent' // 透明色（加拿大省份等保持地图默认）
       }
       
       console.log(`🇺🇸 美国州 ${stateAbbr}: 人口 ${population.toLocaleString()}`)
@@ -439,12 +439,21 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           ]
         }
         
-        // 为所有有人口数据的州创建精确多边形（复用正常模式逻辑）
+        // 只为美国州创建多边形覆盖（复用正常模式逻辑）
         Object.keys(statePolygonData).forEach((stateAbbr) => {
           const polygonCoords = statePolygonData[stateAbbr]
           if (!polygonCoords) return
           
-          // 复用正常模式的人口着色逻辑，统一按人口数量
+          // 只处理美国州，跳过非美国地区（加拿大等）
+          const isUSState = !!STATE_POPULATION_DATA[stateAbbr]
+          if (!isUSState) {
+            console.log(`🌍 跳过非美国地区 ${stateAbbr}: 不创建颜色覆盖，使用地图默认`)
+            return
+          }
+          
+          console.log(`🇺🇸 创建美国州 ${stateAbbr} 的人口颜色覆盖`)
+          
+          // 只对美国州进行人口着色
           const fillColor = getStatePopulationColor(stateAbbr)
           
           // 创建多边形覆盖 - 增强不透明度让颜色更深
@@ -541,7 +550,75 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           }
         })
         
-        console.log(`✅ Boot Camp模式完成: ${statePolygonsRef.current.length} 个边界 (美国州按人口着色，其他统一灰色)`)
+        // 为非美国地区只添加客户标签（不创建多边形覆盖）
+        stateStats.forEach((customerCount, stateAbbr) => {
+          const isUSState = !!STATE_POPULATION_DATA[stateAbbr]
+          
+          if (!isUSState && customerCount > 0) {
+            console.log(`🏷️ 为非美国地区 ${stateAbbr} 添加客户标签（无颜色覆盖）`)
+            
+            const polygonCoords = statePolygonData[stateAbbr]
+            if (polygonCoords) {
+              // 计算多边形中心点用于标签显示
+              const centerLat = polygonCoords.reduce((sum, coord) => sum + coord.lat, 0) / polygonCoords.length
+              const centerLng = polygonCoords.reduce((sum, coord) => sum + coord.lng, 0) / polygonCoords.length
+              
+              // 创建小巧的SVG标签图标
+              const createLabelIcon = (text: string) => {
+                const svgContent = `
+                  <svg xmlns="http://www.w3.org/2000/svg" width="80" height="30" viewBox="0 0 80 30">
+                    <rect x="2" y="2" width="76" height="26" fill="rgba(255,255,255,0.95)" 
+                          stroke="#333" stroke-width="2" rx="8"/>
+                    <text x="40" y="20" font-family="Arial, sans-serif" font-size="14" 
+                          font-weight="bold" fill="#333" text-anchor="middle">${text}</text>
+                  </svg>
+                `
+                return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgContent)}`
+              }
+              
+              // 只显示标签，不显示多边形
+              const labelMarker = new window.google.maps.Marker({
+                position: { lat: centerLat, lng: centerLng },
+                map: mapInstanceRef.current,
+                icon: {
+                  url: createLabelIcon(`${stateAbbr}: ${customerCount}`),
+                  scaledSize: new window.google.maps.Size(80, 30),
+                  anchor: new window.google.maps.Point(40, 15),
+                },
+                zIndex: 1000 // 确保标签在最顶层
+              })
+              
+              // 为标签添加点击事件
+              labelMarker.addListener('click', (event: any) => {
+                const isCanadianProvince = ['ON', 'QC', 'BC'].includes(stateAbbr)
+                const regionType = isCanadianProvince ? '省' : '州'
+                
+                const infoContent = `
+                  <div style="padding: 8px; font-family: system-ui;">
+                    <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}${regionType}</h3>
+                    <p style="margin: 0; color: #6b7280;">客户数量: ${customerCount}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式（使用地图默认颜色）</p>
+                  </div>
+                `
+                
+                if (infoWindowRef.current) {
+                  infoWindowRef.current.close()
+                }
+                
+                infoWindowRef.current = new window.google.maps.InfoWindow({
+                  content: infoContent,
+                  position: event.latLng
+                })
+                
+                infoWindowRef.current.open(mapInstanceRef.current)
+              })
+              
+              statePolygonsRef.current.push(labelMarker)
+            }
+          }
+        })
+        
+        console.log(`✅ Boot Camp模式完成: ${statePolygonsRef.current.length} 个覆盖 (美国州有颜色，非美国地区仅标签)`)
         
       } catch (error) {
         console.error('❌ Polygon州边界创建失败:', error)
@@ -648,7 +725,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             }
             
             const stateAbbr = placeIdToStateMap[placeId] || ''
-            
+          
             if (stateAbbr) {
               console.log(`🎨 正常模式样式设置 - ${stateAbbr}: ${STATE_POPULATION_DATA[stateAbbr] ? '美国州按人口着色' : '非美国地区统一着色'}`)
             }
