@@ -27,12 +27,24 @@ fi
 check_requirements() {
     print_title "检查系统环境..."
     
-    # 检查Node.js
-    if ! command -v node &> /dev/null; then
-        print_error "Node.js 未安装"
-        print_status "安装Node.js..."
-        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-        sudo apt-get install -y nodejs
+    # 检查Node.js (支持nvm管理的Node.js)
+    if command -v node &> /dev/null; then
+        NODE_VERSION=$(node --version)
+        print_status "✅ 检测到Node.js版本: $NODE_VERSION"
+        
+        # 检查版本是否满足要求 (>= 16.x)
+        NODE_MAJOR=$(echo $NODE_VERSION | sed 's/v\([0-9]*\).*/\1/')
+        if [ "$NODE_MAJOR" -ge 16 ]; then
+            print_status "✅ Node.js版本满足要求 (>= 16.x)"
+        else
+            print_error "❌ Node.js版本过低，需要 >= 16.x"
+            exit 1
+        fi
+    else
+        print_error "❌ Node.js 未安装或未在PATH中"
+        print_status "请确保已安装Node.js并且在当前shell中可用"
+        print_status "如果使用nvm，请运行: nvm use 22"
+        exit 1
     fi
     
     # 检查pnpm
