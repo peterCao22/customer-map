@@ -403,9 +403,9 @@ export function CustomerMapView() {
   return (
     <>
       {/* 将控制按钮渲染到页面顶部 */}
-      {typeof window !== "undefined" && 
-        createPortal(topControls, document.getElementById("map-controls") as HTMLElement)
-      }
+      {typeof window !== "undefined" && document.getElementById("map-controls") && 
+        createPortal(topControls, document.getElementById("map-controls")!)}
+      
       
       <div className="flex gap-4 h-[calc(100vh-200px)]">
       {/* 侧边栏 */}
