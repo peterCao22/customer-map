@@ -170,17 +170,22 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return '#FFFACD'                       // 柠檬绸（人口最少：WY, VT, AK等）
     }
 
-    // 根据客户数量获取州级热力图颜色（与正常版本保持一致）
+    // 根据客户数量获取州级热力图颜色（增强版本 - 更深的颜色）
     const getStateHeatColor = (customerCount: number, maxCount: number) => {
       if (customerCount === 0) return '#ffffff' // 白色（不显示）
       const intensity = customerCount / maxCount
-      // 使用与正常版本相同的橙色系热力图颜色
-      if (intensity >= 0.8) return '#CC6600' // 深橙色 - 客户最多
-      if (intensity >= 0.6) return '#FF7F00' // 橙色
-      if (intensity >= 0.4) return '#FFA500' // 亮橙色
-      if (intensity >= 0.2) return '#FFD700' // 金色
-      if (intensity >= 0.1) return '#FFFF99' // 浅黄色
-      return '#FFFACD' // 柠檬绸色 - 客户最少
+      
+      // 增强的颜色映射 - 让高值更深，与正常版本完全匹配
+      if (intensity >= 0.9) return '#8B0000'  // 深红色 - 最高客户数 (暗红)
+      if (intensity >= 0.8) return '#B22222'  // 火砖红 - 很高客户数
+      if (intensity >= 0.7) return '#DC143C'  // 深红色 - 高客户数  
+      if (intensity >= 0.6) return '#FF4500'  // 橙红色 - 较高客户数
+      if (intensity >= 0.5) return '#FF6347'  // 番茄红 - 中上客户数
+      if (intensity >= 0.4) return '#FF7F00'  // 深橙色 - 中等客户数
+      if (intensity >= 0.3) return '#FFA500'  // 橙色 - 中等客户数
+      if (intensity >= 0.2) return '#FFD700'  // 金色 - 较少客户数
+      if (intensity >= 0.1) return '#FFFF99'  // 浅黄色 - 少客户数
+      return '#FFFACD' // 柠檬绸色 - 最少客户数
     }
 
     // 检查环境变量配置
@@ -328,6 +333,101 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           "AL": [ // 阿拉巴马州
             { lat: 35.0, lng: -88.5 }, { lat: 35.0, lng: -84.9 }, { lat: 30.2, lng: -84.9 },
             { lat: 30.2, lng: -88.5 }, { lat: 35.0, lng: -88.5 }
+          ],
+          "OH": [ // 俄亥俄州
+            { lat: 41.9, lng: -84.8 }, { lat: 41.9, lng: -80.5 }, { lat: 40.6, lng: -80.5 },
+            { lat: 38.4, lng: -82.6 }, { lat: 38.4, lng: -84.8 }, { lat: 39.1, lng: -84.8 },
+            { lat: 41.9, lng: -84.8 }
+          ],
+          "PA": [ // 宾夕法尼亚州
+            { lat: 42.0, lng: -80.5 }, { lat: 42.0, lng: -74.7 }, { lat: 39.7, lng: -75.8 },
+            { lat: 39.7, lng: -80.5 }, { lat: 42.0, lng: -80.5 }
+          ],
+          "KY": [ // 肯塔基州
+            { lat: 39.1, lng: -89.6 }, { lat: 39.1, lng: -81.9 }, { lat: 36.5, lng: -81.9 },
+            { lat: 36.5, lng: -89.6 }, { lat: 39.1, lng: -89.6 }
+          ],
+          "TN": [ // 田纳西州
+            { lat: 36.7, lng: -90.3 }, { lat: 36.7, lng: -81.6 }, { lat: 35.0, lng: -81.6 },
+            { lat: 35.0, lng: -90.3 }, { lat: 36.7, lng: -90.3 }
+          ],
+          "NC": [ // 北卡罗来纳州
+            { lat: 36.6, lng: -84.3 }, { lat: 36.6, lng: -75.4 }, { lat: 35.2, lng: -75.4 },
+            { lat: 33.8, lng: -78.5 }, { lat: 35.0, lng: -84.3 }, { lat: 36.6, lng: -84.3 }
+          ],
+          "SC": [ // 南卡罗来纳州
+            { lat: 35.2, lng: -83.4 }, { lat: 35.2, lng: -78.5 }, { lat: 32.0, lng: -78.9 },
+            { lat: 32.0, lng: -83.4 }, { lat: 35.2, lng: -83.4 }
+          ],
+          "GA": [ // 乔治亚州
+            { lat: 35.0, lng: -85.6 }, { lat: 35.0, lng: -80.8 }, { lat: 30.4, lng: -81.4 },
+            { lat: 30.4, lng: -84.9 }, { lat: 32.0, lng: -85.6 }, { lat: 35.0, lng: -85.6 }
+          ],
+          "VA": [ // 弗吉尼亚州
+            { lat: 39.5, lng: -83.7 }, { lat: 39.5, lng: -75.2 }, { lat: 36.5, lng: -75.9 },
+            { lat: 36.5, lng: -83.7 }, { lat: 39.5, lng: -83.7 }
+          ],
+          "DC": [ // 华盛顿特区
+            { lat: 38.99, lng: -77.12 }, { lat: 38.99, lng: -76.9 }, { lat: 38.8, lng: -76.9 },
+            { lat: 38.8, lng: -77.12 }, { lat: 38.99, lng: -77.12 }
+          ],
+          "MI": [ // 密歇根州
+            { lat: 48.2, lng: -90.4 }, { lat: 48.2, lng: -82.4 }, { lat: 41.7, lng: -82.4 },
+            { lat: 41.7, lng: -87.0 }, { lat: 45.6, lng: -87.0 }, { lat: 47.1, lng: -88.0 },
+            { lat: 48.2, lng: -90.4 }
+          ],
+          "IN": [ // 印第安纳州
+            { lat: 41.8, lng: -88.1 }, { lat: 41.8, lng: -84.8 }, { lat: 37.8, lng: -84.8 },
+            { lat: 37.8, lng: -88.1 }, { lat: 41.8, lng: -88.1 }
+          ],
+          "WV": [ // 西弗吉尼亚州
+            { lat: 40.6, lng: -82.6 }, { lat: 40.6, lng: -77.7 }, { lat: 37.2, lng: -77.7 },
+            { lat: 37.2, lng: -82.6 }, { lat: 40.6, lng: -82.6 }
+          ],
+          "MD": [ // 马里兰州
+            { lat: 39.7, lng: -79.5 }, { lat: 39.7, lng: -75.0 }, { lat: 38.0, lng: -75.0 },
+            { lat: 38.0, lng: -79.5 }, { lat: 39.7, lng: -79.5 }
+          ],
+          "NJ": [ // 新泽西州
+            { lat: 41.4, lng: -75.6 }, { lat: 41.4, lng: -73.9 }, { lat: 38.9, lng: -74.9 },
+            { lat: 38.9, lng: -75.6 }, { lat: 41.4, lng: -75.6 }
+          ],
+          "CT": [ // 康涅狄格州
+            { lat: 42.1, lng: -73.7 }, { lat: 42.1, lng: -71.8 }, { lat: 40.9, lng: -71.8 },
+            { lat: 40.9, lng: -73.7 }, { lat: 42.1, lng: -73.7 }
+          ],
+          "MA": [ // 马萨诸塞州
+            { lat: 42.9, lng: -73.5 }, { lat: 42.9, lng: -69.9 }, { lat: 41.2, lng: -69.9 },
+            { lat: 41.2, lng: -73.5 }, { lat: 42.9, lng: -73.5 }
+          ],
+          "RI": [ // 罗德岛州
+            { lat: 42.0, lng: -71.9 }, { lat: 42.0, lng: -71.1 }, { lat: 41.1, lng: -71.1 },
+            { lat: 41.1, lng: -71.9 }, { lat: 42.0, lng: -71.9 }
+          ],
+          "VT": [ // 佛蒙特州
+            { lat: 45.0, lng: -73.4 }, { lat: 45.0, lng: -71.5 }, { lat: 42.7, lng: -71.5 },
+            { lat: 42.7, lng: -73.4 }, { lat: 45.0, lng: -73.4 }
+          ],
+          "NH": [ // 新罕布什尔州
+            { lat: 45.3, lng: -72.6 }, { lat: 45.3, lng: -70.6 }, { lat: 42.7, lng: -70.6 },
+            { lat: 42.7, lng: -72.6 }, { lat: 45.3, lng: -72.6 }
+          ],
+          "ME": [ // 缅因州
+            { lat: 47.5, lng: -71.1 }, { lat: 47.5, lng: -66.9 }, { lat: 43.1, lng: -66.9 },
+            { lat: 43.1, lng: -71.1 }, { lat: 47.5, lng: -71.1 }
+          ],
+          // 加拿大省份支持
+          "ON": [ // 安大略省
+            { lat: 57.0, lng: -95.0 }, { lat: 57.0, lng: -74.3 }, { lat: 41.7, lng: -74.3 },
+            { lat: 41.7, lng: -95.0 }, { lat: 57.0, lng: -95.0 }
+          ],
+          "QC": [ // 魁北克省
+            { lat: 62.6, lng: -79.8 }, { lat: 62.6, lng: -57.1 }, { lat: 45.0, lng: -57.1 },
+            { lat: 45.0, lng: -79.8 }, { lat: 62.6, lng: -79.8 }
+          ],
+          "BC": [ // 不列颠哥伦比亚省
+            { lat: 60.0, lng: -139.1 }, { lat: 60.0, lng: -114.0 }, { lat: 48.3, lng: -114.0 },
+            { lat: 48.3, lng: -139.1 }, { lat: 60.0, lng: -139.1 }
           ]
         }
         
@@ -339,14 +439,14 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           // 使用与正常版本相同的热力图颜色
           const fillColor = getStateHeatColor(count, maxCount)
           
-          // 创建多边形覆盖
+          // 创建多边形覆盖 - 增强不透明度让颜色更深
           const polygon = new window.google.maps.Polygon({
             paths: polygonCoords,
             strokeColor: '#000000', // 黑色边框
-            strokeOpacity: 0.8,
+            strokeOpacity: 0.9,     // 增强边框不透明度
             strokeWeight: 1,
             fillColor: fillColor,
-            fillOpacity: 0.8, // 与正常版本一致
+            fillOpacity: 0.85,      // 增强填充不透明度，让颜色更深
             map: mapInstanceRef.current,
             zIndex: 1
           })
@@ -355,9 +455,13 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           
           // 添加点击事件
           polygon.addListener('click', (event: any) => {
+            // 判断是否为加拿大省份
+            const isCanadianProvince = ['ON', 'QC', 'BC'].includes(stateAbbr)
+            const regionType = isCanadianProvince ? '省' : '州'
+            
             const infoContent = `
               <div style="padding: 8px; font-family: system-ui;">
-                <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}州</h3>
+                <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}${regionType}</h3>
                 <p style="margin: 0; color: #4b5563;">客户数量: ${count}</p>
                 <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式</p>
               </div>
