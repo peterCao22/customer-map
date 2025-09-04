@@ -32,6 +32,38 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
     const [isLoaded, setIsLoaded] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [currentZoom, setCurrentZoom] = useState(5) // 当前缩放级别
+    const [usePolygonFallback, setUsePolygonFallback] = useState(false) // 是否使用Polygon降级方案
+
+    // 检测硬件加速是否可用（Boot Camp兼容性检测）
+    const checkHardwareAcceleration = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+        
+        if (!gl) return false
+        
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+        if (!debugInfo) return false
+        
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
+        
+        // 检测是否为软件渲染
+        const isSoftwareRendering = (
+          renderer?.includes('Software') ||
+          renderer?.includes('SwiftShader') ||
+          renderer?.includes('Mesa') ||
+          vendor?.includes('Software')
+        )
+        
+        console.log('🔍 WebGL检测结果:', { renderer, vendor, isSoftwareRendering })
+        
+        return !isSoftwareRendering
+      } catch (error) {
+        console.warn('WebGL检测失败:', error)
+        return false
+      }
+    }
 
     // 根据销售量获取标记颜色
     const getColorByAmount = (totalAmount: number | null) => {
@@ -167,13 +199,116 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return stateStats
     }
 
+    // Polygon降级方案：适用于Boot Camp等硬件加速不可用的环境
+    const createPolygonStateOverlays = async () => {
+      if (!mapInstanceRef.current || !window.google) return
+      
+      try {
+        // 清除现有覆盖
+        clearStateOverlays()
+        
+        const stateStats = getCustomersByState()
+        const maxCount = Math.max(...Array.from(stateStats.values()), 1)
+        
+        console.log('🔄 使用Polygon降级方案渲染州边界（Boot Camp兼容）...')
+        
+        // 简化的州边界数据（主要州的近似矩形边界）
+        const statePolygonData: { [stateAbbr: string]: google.maps.LatLngLiteral[] } = {
+          "CA": [ // 加利福尼亚
+            { lat: 42.0, lng: -124.4 }, { lat: 42.0, lng: -114.1 },
+            { lat: 32.5, lng: -114.1 }, { lat: 32.5, lng: -124.4 }
+          ],
+          "TX": [ // 德克萨斯
+            { lat: 36.5, lng: -106.6 }, { lat: 36.5, lng: -93.5 },
+            { lat: 25.8, lng: -93.5 }, { lat: 25.8, lng: -106.6 }
+          ],
+          "NY": [ // 纽约
+            { lat: 45.0, lng: -79.8 }, { lat: 45.0, lng: -71.9 },
+            { lat: 40.5, lng: -71.9 }, { lat: 40.5, lng: -79.8 }
+          ],
+          "FL": [ // 佛罗里达
+            { lat: 31.0, lng: -87.6 }, { lat: 31.0, lng: -80.0 },
+            { lat: 24.5, lng: -80.0 }, { lat: 24.5, lng: -87.6 }
+          ],
+          "WA": [ // 华盛顿州
+            { lat: 49.0, lng: -124.8 }, { lat: 49.0, lng: -117.0 },
+            { lat: 45.5, lng: -117.0 }, { lat: 45.5, lng: -124.8 }
+          ],
+          "IL": [ // 伊利诺伊
+            { lat: 42.5, lng: -91.5 }, { lat: 42.5, lng: -87.0 },
+            { lat: 36.9, lng: -87.0 }, { lat: 36.9, lng: -91.5 }
+          ]
+        }
+        
+        // 为每个有客户数据的州创建多边形
+        stateStats.forEach((count, stateAbbr) => {
+          const polygonCoords = statePolygonData[stateAbbr]
+          if (!polygonCoords) return
+          
+          // 计算颜色强度
+          const intensity = count / maxCount
+          const alpha = Math.max(0.2, Math.min(0.8, intensity))
+          
+          // 创建多边形
+          const polygon = new window.google.maps.Polygon({
+            paths: polygonCoords,
+            strokeColor: '#2563eb',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#3b82f6',
+            fillOpacity: alpha,
+            map: mapInstanceRef.current,
+            zIndex: 1
+          })
+          
+          statePolygonsRef.current.push(polygon)
+          
+          // 添加点击事件
+          polygon.addListener('click', (event: any) => {
+            const infoContent = `
+              <div style="padding: 8px; font-family: system-ui;">
+                <h3 style="margin: 0 0 8px 0; color: #1f2937;">${stateAbbr}州</h3>
+                <p style="margin: 0; color: #4b5563;">客户数量: ${count}</p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Boot Camp兼容模式</p>
+              </div>
+            `
+            
+            if (infoWindowRef.current) {
+              infoWindowRef.current.close()
+            }
+            
+            infoWindowRef.current = new window.google.maps.InfoWindow({
+              content: infoContent,
+              position: event.latLng
+            })
+            
+            infoWindowRef.current.open(mapInstanceRef.current)
+          })
+        })
+        
+        console.log(`✅ Polygon降级方案完成: 创建 ${statePolygonsRef.current.length} 个州边界`)
+        
+      } catch (error) {
+        console.error('❌ Polygon州边界创建失败:', error)
+      }
+    }
+
     // 创建州级Choropleth Map（按照官方文档实现）
     const createStateOverlays = async () => {
       if (!mapInstanceRef.current || !window.google) return
       
+      // 检测硬件加速是否可用，如果不可用则使用Polygon降级方案
+      const hasHardwareAcceleration = checkHardwareAcceleration()
+      if (!hasHardwareAcceleration) {
+        console.warn('⚠️ 硬件加速不可用，使用Polygon降级方案')
+        setUsePolygonFallback(true)
+        return createPolygonStateOverlays()
+      }
+      
       try {
         // 清除现有的州级覆盖
         clearStateOverlays()
+        setUsePolygonFallback(false)
 
         const stateStats = getCustomersByState()
         const maxCount = Math.max(...Array.from(stateStats.values()), 1)
@@ -781,6 +916,15 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
               <p className="text-muted-foreground">Loading map...</p>
+            </div>
+          </div>
+        )}
+        {/* Boot Camp兼容性提示 */}
+        {isLoaded && usePolygonFallback && (
+          <div className="absolute bottom-4 left-4 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded-md shadow-sm">
+            <div className="flex items-center text-sm">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+              <span className="text-yellow-800">Boot Camp兼容模式</span>
             </div>
           </div>
         )}
