@@ -145,23 +145,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return '#FFFACD'                       // 柠檬绸（人口最少：WY, VT, AK等）
     }
 
-    // 根据客户数量获取州级热力图颜色（增强版本 - 更深的颜色）
-    const getStateHeatColor = (customerCount: number, maxCount: number) => {
-      if (customerCount === 0) return '#ffffff' // 白色（不显示）
-      const intensity = customerCount / maxCount
-      
-      // 增强的颜色映射 - 让高值更深，与正常版本完全匹配
-      if (intensity >= 0.9) return '#8B0000'  // 深红色 - 最高客户数 (暗红)
-      if (intensity >= 0.8) return '#B22222'  // 火砖红 - 很高客户数
-      if (intensity >= 0.7) return '#DC143C'  // 深红色 - 高客户数  
-      if (intensity >= 0.6) return '#FF4500'  // 橙红色 - 较高客户数
-      if (intensity >= 0.5) return '#FF6347'  // 番茄红 - 中上客户数
-      if (intensity >= 0.4) return '#FF7F00'  // 深橙色 - 中等客户数
-      if (intensity >= 0.3) return '#FFA500'  // 橙色 - 中等客户数
-      if (intensity >= 0.2) return '#FFD700'  // 金色 - 较少客户数
-      if (intensity >= 0.1) return '#FFFF99'  // 浅黄色 - 少客户数
-      return '#FFFACD' // 柠檬绸色 - 最少客户数
-    }
 
     // 检查环境变量配置
     const checkEnvironmentConfig = () => {
@@ -265,7 +248,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           strokeOpacity: 0.8,
           strokeWeight: 1,
             fillColor: fillColor,
-          fillOpacity: 0.5
+          fillOpacity: 0.7
         }
       }
       
