@@ -196,8 +196,8 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
               "ChIJO9YMTXYFx4kReOgEjBItHZQ": "DE", // Delaware
               "ChIJvypWkWV2wYgR0E7HW9MTLvc": "FL", // Florida
               "ChIJV4FfHcU28YgR5xBP7BC8hGY": "GA", // Georgia
-              "ChIJBeB5Twbb_3sRKIbMdNKCd0s": "HI", // Hawaii
-              "ChIJ6Znkhaj_WFMRWIf3FQUwa9A": "ID", // Idaho
+              "ChIJCdwf1zayuokR8TxHz_n_oiM": "HI", // Hawaii
+              "ChIJJQXaM4w1VYcRjT9emnqCGFo": "ID", // Idaho
               "ChIJGSZubzgtC4gRVlkRZFCCFX8": "IL", // Illinois
               "ChIJHRv42bxQa4gRcuwyy84vEH4": "IN", // Indiana
               "ChIJGWD48W9e7ocR2VnHV0pj78Y": "IA", // Iowa
@@ -242,6 +242,11 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           
         // 复用人口着色逻辑：美国州按人口，其他地区统一颜色
           const fillColor = getStatePopulationColor(stateAbbr)
+        
+        // 添加调试信息
+        if (!stateAbbr && placeId) {
+          console.warn(`⚠️ 未找到Place ID的州映射: ${placeId}`)
+        }
           
           return {
           strokeColor: '#000000',
@@ -392,8 +397,12 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       // 使用唯一的回调函数名
       (window as any)[callbackName] = () => {
         setIsLoaded(true)
-        // 清理回调函数
-        delete (window as any)[callbackName]
+        // 延迟清理回调函数，确保Google Maps完全加载后再清理
+        setTimeout(() => {
+          if ((window as any)[callbackName]) {
+            delete (window as any)[callbackName]
+          }
+        }, 1000)
       }
 
       document.head.appendChild(script)
