@@ -181,7 +181,7 @@ export function CustomerMapView() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [showSidebar, setShowSidebar] = useState(true)
+  const [showSidebar, setShowSidebar] = useState(false) // 默认隐藏侧边栏，在移动端更友好
   const [showSalesRange, setShowSalesRange] = useState(false)
   const [showStrategicOnly, setShowStrategicOnly] = useState(false) // 战略客户筛选
   
@@ -362,7 +362,7 @@ export function CustomerMapView() {
   // 如果正在初始加载，显示加载状态
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+      <div className="flex items-center justify-center h-[calc(100vh-80px)] sm:h-[calc(100vh-120px)] md:h-[calc(100vh-200px)] min-h-[400px] sm:min-h-[500px]">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading customer data...</p>
@@ -376,7 +376,8 @@ export function CustomerMapView() {
     <>
       <Button variant="outline" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
         <Filter className="h-4 w-4" />
-        {showSidebar ? "Hide" : "Show"} Sidebar
+        <span className="hidden sm:inline">{showSidebar ? "Hide" : "Show"} Sidebar</span>
+        <span className="sm:hidden">{showSidebar ? "Hide" : "Show"}</span>
       </Button>
       <Button 
         variant="outline" 
@@ -386,11 +387,13 @@ export function CustomerMapView() {
         title="Refresh customer data"
       >
         <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-        Refresh Data
+        <span className="hidden sm:inline">Refresh Data</span>
+        <span className="sm:hidden">Refresh</span>
       </Button>
       <Button variant="outline" size="sm" onClick={handleResetView} title="Reset view to show all customers">
         <RotateCcw className="h-4 w-4" />
-        Reset View
+        <span className="hidden sm:inline">Reset View</span>
+        <span className="sm:hidden">Reset</span>
       </Button>
       <Button
         variant={showSalesRange ? "default" : "outline"}
@@ -399,7 +402,8 @@ export function CustomerMapView() {
         title="Show/Hide Sales Area"
       >
         <MapPin className="h-4 w-4" />
-        Sales Area
+        <span className="hidden sm:inline">Sales Area</span>
+        <span className="sm:hidden">Area</span>
       </Button>
     </>
   )
@@ -411,10 +415,10 @@ export function CustomerMapView() {
         createPortal(topControls, document.getElementById("map-controls")!)}
       
       
-      <div className="flex gap-4 h-[calc(100vh-200px)]">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 h-[calc(100vh-80px)] sm:h-[calc(100vh-120px)] md:h-[calc(100vh-200px)] min-h-[400px] sm:min-h-[500px]">
       {/* 侧边栏 */}
       {showSidebar && (
-        <div className="w-80 flex flex-col gap-4">
+        <div className="w-full sm:w-80 flex flex-col gap-2 sm:gap-4">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -463,7 +467,7 @@ export function CustomerMapView() {
       )}
 
       {/* 地图区域 */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-[400px] sm:min-h-0">
         <Card className="h-full">
           <GoogleMap
             ref={mapRef}

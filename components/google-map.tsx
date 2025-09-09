@@ -33,6 +33,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
     const [error, setError] = useState<string | null>(null)
     const [currentZoom, setCurrentZoom] = useState(5) // 当前缩放级别
 
+
     // 根据销售量获取标记颜色
     const getColorByAmount = (totalAmount: number | null) => {
       if (!totalAmount || totalAmount <= 0) return "#6b7280" // 灰色（无销售数据/销售量为0）
@@ -120,12 +121,58 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       "DC": 689545,   // 华盛顿特区
     }
 
+    // 验证数据对象完整性
+    const validateStateData = () => {
+      try {
+        if (!STATE_POPULATION_DATA || typeof STATE_POPULATION_DATA !== 'object') {
+          return false
+        }
+        
+        if (!STATE_CENTER_COORDS || typeof STATE_CENTER_COORDS !== 'object') {
+          return false
+        }
+        
+        // 验证关键州是否存在
+        const criticalStates = ['CA', 'TX', 'FL', 'NY', 'HI']
+        for (const state of criticalStates) {
+          if (!(state in STATE_POPULATION_DATA)) {
+            return false
+          }
+          if (!(state in STATE_CENTER_COORDS)) {
+            return false
+          }
+        }
+        
+        return true
+      } catch (error) {
+        return false
+      }
+    }
+
     // 根据人口数量获取州级黄色系颜色（增强对比度）
     const getStatePopulationColor = (stateAbbr: string) => {
+      try {
+        // 安全检查输入和数据对象
+        if (!stateAbbr || typeof stateAbbr !== 'string' || !STATE_POPULATION_DATA) {
+          return '#f8f9fa' // 返回默认浅灰色
+        }
+
       const population = STATE_POPULATION_DATA[stateAbbr] || 0
       if (population === 0) return '#f8f9fa' // 无数据时为浅灰色
       
-      const maxPopulation = Math.max(...Object.values(STATE_POPULATION_DATA)) // 约3950万（CA）
+        // 安全地获取最大人口数值
+        let maxPopulation = 39538223 // 默认使用加州人口作为最大值
+        try {
+          if (STATE_POPULATION_DATA && typeof STATE_POPULATION_DATA === 'object') {
+            const populationValues = Object.values(STATE_POPULATION_DATA)
+            if (populationValues.length > 0) {
+              maxPopulation = Math.max(...populationValues)
+            }
+          }
+        } catch (valuesError) {
+          // 使用默认值
+        }
+        
       const intensity = population / maxPopulation
       
       // 增强的黄橙色系渐变：从象牙白到深橙色，对比更明显
@@ -135,6 +182,9 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       if (intensity >= 0.2) return '#FFD700' // 金色（人口较少：WA, AZ, MA等）
       if (intensity >= 0.1) return '#FFFF99' // 浅黄色（人口更少）
       return '#FFFACD'                       // 柠檬绸（人口最少：WY, VT, AK等）
+      } catch (error) {
+        return '#f8f9fa' // 返回默认浅灰色
+      }
     }
 
     // 根据客户数量获取州级热力图颜色（保留用于圆形覆盖层降级方案）
@@ -158,14 +208,30 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
     // 根据客户州分组统计
     const getCustomersByState = () => {
+      try {
       const stateStats = new Map<string, number>()
-      customers.forEach(customer => {
-        const state = customer.state?.trim()
-        if (state && state.length === 2) { // 美国州缩写都是2个字母
-          stateStats.set(state, (stateStats.get(state) || 0) + 1)
+        
+        if (!customers || !Array.isArray(customers)) {
+          return stateStats
         }
+
+      customers.forEach(customer => {
+          try {
+            const state = customer?.state?.trim()
+            if (state && state.length === 2 && typeof state === 'string') { // 美国州缩写都是2个字母
+              // 只统计美国州，过滤掉加拿大省份等
+              if (STATE_POPULATION_DATA && STATE_POPULATION_DATA[state]) {
+                stateStats.set(state, (stateStats.get(state) || 0) + 1)
+              }
+            }
+          } catch (customerError) {
+            // 跳过有问题的客户数据
+          }
       })
       return stateStats
+      } catch (error) {
+        return new Map<string, number>()
+      }
     }
 
 
@@ -178,16 +244,20 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       
       try {
         // 清除现有的州级覆盖
-        clearStateOverlays()
-
+      clearStateOverlays()
+      
         const stateStats = getCustomersByState()
-        const maxCount = Math.max(...Array.from(stateStats.values()), 1)
+        if (!stateStats) {
+          return
+        }
+        
+        const stateValues = Array.from(stateStats.values())
+        const maxCount = stateValues.length > 0 ? Math.max(...stateValues) : 1
         
 
         // 临时测试：强制使用降级方案来验证它是否工作
         // 可以在控制台查看是否有圆圈标记
         if (window.location.search.includes('force-fallback')) {
-          console.warn('Force fallback mode enabled for testing')
           createEnhancedFallbackOverlay()
           return
         }
@@ -196,9 +266,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         let featureLayer = null
         try {
           featureLayer = mapInstanceRef.current.getFeatureLayer("ADMINISTRATIVE_AREA_LEVEL_1")
-          console.info('FeatureLayer obtained successfully')
         } catch (err: any) {
-          console.warn('FeatureLayer failed:', err.message)
           throw new Error('FeatureLayer not configured in Map Style')
         }
         
@@ -273,6 +341,12 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             
             const stateAbbr = placeIdToStateMap[placeId] || ''
           
+          // 只对美国州进行样式设置，非美国地区保持默认样式
+          if (!stateAbbr || !STATE_POPULATION_DATA || !STATE_POPULATION_DATA[stateAbbr]) {
+            // 非美国地区（如加拿大、墨西哥等）返回null，保持地图默认样式
+            return null
+          }
+          
           // 根据州人口数量计算颜色（黄色系渐变）
           const fillColor = getStatePopulationColor(stateAbbr)
           
@@ -302,7 +376,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         
         // 保存 featureLayer 引用
         statePolygonsRef.current.push(featureLayer)
-
+        
         // 添加备用检查：如果 FeatureLayer 在兼容模式下不显示，使用降级方案
         setTimeout(() => {
           // 检查是否真正显示了 FeatureLayer
@@ -311,14 +385,11 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             // 尝试检查地图的渲染类型或其他方式来确定是否需要降级
             const isRaster = mapInstanceRef.current?.getRenderingType?.() === 'RASTER'
             if (isRaster) {
-              console.warn('Detected raster rendering, switching to fallback overlay')
               clearStateOverlays()
               createEnhancedFallbackOverlay()
-            } else {
-              console.info('FeatureLayer setup completed successfully')
             }
           } catch (checkError) {
-            console.warn('Unable to determine rendering type, FeatureLayer should be working')
+            // FeatureLayer应该正常工作
           }
         }, 2000)
         
@@ -326,7 +397,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         
       } catch (err: any) {
         // 降级方案：使用增强的覆盖方案
-        console.warn('FeatureLayer creation failed, using enhanced fallback:', err.message)
         createEnhancedFallbackOverlay()
       }
     }
@@ -336,32 +406,35 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       try {
         const { AdvancedMarkerElement } = await window.google.maps.importLibrary("marker") as any
 
-        // 计算每个州的中心位置并添加标签
-        const stateCustomers = new Map<string, Customer[]>()
-        customers.forEach(customer => {
-          const state = customer.state?.trim()
-          if (state && state.length === 2) {
-            if (!stateCustomers.has(state)) {
-              stateCustomers.set(state, [])
+        // 安全检查数据对象是否存在
+        if (!STATE_CENTER_COORDS) {
+          return
+        }
+
+        // 遍历所有有客户的州并在其预定义的中心坐标显示标签
+        stateStats.forEach((customerCount, stateAbbr) => {
+          try {
+            if (!stateAbbr || typeof stateAbbr !== 'string') {
+              return
             }
-            stateCustomers.get(state)!.push(customer)
-          }
-        })
 
-        stateCustomers.forEach((customerList, stateAbbr) => {
-          if (customerList.length === 0) return
+            // 只处理美国州，过滤掉加拿大省份等
+            if (!STATE_POPULATION_DATA || !STATE_POPULATION_DATA[stateAbbr]) {
+              return
+            }
 
-          // 计算州的中心位置
-          const centerLat = customerList.reduce((sum, c) => sum + c.lat, 0) / customerList.length
-          const centerLng = customerList.reduce((sum, c) => sum + c.lng, 0) / customerList.length
-          const customerCount = customerList.length
+            // 使用预定义的州中心坐标
+            const centerCoords = STATE_CENTER_COORDS[stateAbbr]
+            if (!centerCoords) {
+              return
+            }
 
           // 创建州标签 (格式: CA: 2)
           const labelElement = document.createElement('div')
           labelElement.innerHTML = `
             <div style="
-              background: rgba(255,255,255,0.95);
-              border: 2px solid #333;
+              background: rgba(248, 248, 248, 0.9);
+              border: 1px solid rgba(200, 200, 200, 0.7);
               border-radius: 8px;
               padding: 6px 10px;
               font-family: Arial, sans-serif;
@@ -369,7 +442,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
               font-weight: bold;
               color: #333;
               text-align: center;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
               white-space: nowrap;
             ">
               ${stateAbbr}: ${customerCount}
@@ -377,17 +450,21 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           `
 
           const stateLabel = new AdvancedMarkerElement({
-            position: { lat: centerLat, lng: centerLng },
+            position: centerCoords,
             map: mapInstanceRef.current,
             content: labelElement
           })
 
           statePolygonsRef.current.push(stateLabel)
+          } catch (labelError) {
+            // 忽略标签创建错误
+          }
         })
       } catch (err) {
-        // State labels creation failed silently
+        // 忽略标签创建错误
       }
     }
+
 
     // 美国各州中心坐标数据（用于降级方案）
     const STATE_CENTER_COORDS: { [stateAbbr: string]: { lat: number; lng: number } } = {
@@ -446,23 +523,37 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
     // 增强的降级覆盖方案（为不支持矢量地图的设备提供更好体验）
     const createEnhancedFallbackOverlay = () => {
-      const stateStats = getCustomersByState()
-      const maxCount = Math.max(...Array.from(stateStats.values()), 1)
-      
-      console.info('Creating enhanced fallback overlay for all US states')
+      try {
+        const stateStats = getCustomersByState()
+        const maxCount = Math.max(...Array.from(stateStats.values()), 1)
 
-      // 遍历所有美国州（基于人口数据），包括没有客户的州
-      Object.keys(STATE_POPULATION_DATA).forEach(stateAbbr => {
-        const customerCount = stateStats.get(stateAbbr) || 0 // 没有客户的州显示0
-        
-        // 使用预定义的州中心坐标
-        const centerCoords = STATE_CENTER_COORDS[stateAbbr]
-        if (!centerCoords) {
-          console.warn(`No center coordinates found for state: ${stateAbbr}`)
+        // 安全检查数据对象是否存在
+        if (!STATE_POPULATION_DATA || !STATE_CENTER_COORDS) {
           return
         }
 
-        // 获取基于人口的颜色（所有州都显示颜色）
+        // 安全地遍历所有美国州（基于人口数据），包括没有客户的州
+        const stateKeys = STATE_POPULATION_DATA ? Object.keys(STATE_POPULATION_DATA) : []
+        stateKeys.forEach(stateAbbr => {
+          try {
+            if (!stateAbbr || typeof stateAbbr !== 'string') {
+              return
+            }
+
+            // 确保是美国州，因为我们只处理美国州数据
+            if (!STATE_POPULATION_DATA[stateAbbr]) {
+              return
+            }
+
+            const customerCount = stateStats.get(stateAbbr) || 0 // 没有客户的州显示0
+            
+            // 使用预定义的州中心坐标
+            const centerCoords = STATE_CENTER_COORDS[stateAbbr]
+            if (!centerCoords) {
+              return
+            }
+
+            // 安全获取基于人口的颜色（所有州都显示颜色）
         const fillColor = getStatePopulationColor(stateAbbr)
         
         // 计算动态标记大小
@@ -500,11 +591,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           zIndex: customerCount > 0 ? 1000 + customerCount : 500 // 有客户的州显示在上层
         })
 
-        console.log(`Created marker for ${stateAbbr}: customers=${customerCount}, size=${markerSize}, color=${fillColor}`)
 
         // 添加点击事件显示详细信息
         stateMarker.addListener('click', () => {
-          const population = STATE_POPULATION_DATA[stateAbbr] || 0
+          const population = (STATE_POPULATION_DATA && STATE_POPULATION_DATA[stateAbbr]) || 0
           const infoContent = `
             <div style="padding: 12px; font-family: system-ui; min-width: 200px;">
               <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px; font-weight: bold;">
@@ -539,12 +629,14 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       })
 
         statePolygonsRef.current.push(stateMarker)
+          } catch (stateError) {
+            // 忽略单个州标记创建错误
+          }
       })
 
-      // 在控制台显示降级方案信息
-      const totalStates = Object.keys(STATE_POPULATION_DATA).length
-      const statesWithCustomers = stateStats.size
-      console.info(`Enhanced fallback overlay created with ${totalStates} state markers (${statesWithCustomers} with customers, ${totalStates - statesWithCustomers} without customers)`)
+      } catch (error) {
+        // 忽略覆盖层创建错误
+      }
     }
 
     // 降级方案：简化的州覆盖（保留原有方案作为备用）
@@ -556,15 +648,23 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       customers.forEach(customer => {
         const state = customer.state?.trim()
         if (state && state.length === 2) {
+          // 只处理美国州的客户数据
+          if (STATE_POPULATION_DATA && STATE_POPULATION_DATA[state]) {
           if (!stateCustomers.has(state)) {
             stateCustomers.set(state, [])
           }
           stateCustomers.get(state)!.push(customer)
+          }
         }
       })
 
       stateCustomers.forEach((customers, state) => {
         if (customers.length === 0) return
+
+        // 只处理美国州，跳过加拿大省份等
+        if (!STATE_POPULATION_DATA || !STATE_POPULATION_DATA[state]) {
+          return
+        }
 
         const centerLat = customers.reduce((sum, c) => sum + c.lat, 0) / customers.length
         const centerLng = customers.reduce((sum, c) => sum + c.lng, 0) / customers.length
@@ -634,32 +734,22 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         return
       }
 
-      // 使用更稳定的回调函数命名策略，基于组件实例而非时间戳
-      const componentId = Math.random().toString(36).substr(2, 9)
-      const callbackName = `initGoogleMap_${componentId}`
+      // 使用更稳定的全局回调函数名，避免随机ID导致的问题
+      const callbackName = 'initGoogleMapCallback'
 
       // 创建回调函数
       const initCallback = () => {
         try {
           setIsLoaded(true)
-          // 显著延长清理时间，确保 API 完全初始化完成
-          setTimeout(() => {
-            try {
-              if ((window as any)[callbackName]) {
-                delete (window as any)[callbackName]
-              }
-            } catch (cleanupError) {
-              // 忽略清理时的错误
-            }
-          }, 8000) // 增加到8秒，给足够时间让所有异步操作完成
         } catch (err: any) {
-          console.error('Google Maps initialization callback error:', err)
           setError('Google Maps initialization failed')
         }
       }
 
-      // 设置全局回调函数，延长生命周期
+      // 设置全局回调函数
+      if (!window[callbackName as any]) {
       (window as any)[callbackName] = initCallback
+      }
 
       const script = document.createElement("script")
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=${callbackName}`
@@ -669,10 +759,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       script.onerror = () => {
         const errorMsg = "Failed to load Google Maps API script, please check if the API key is correct"
         setError(errorMsg)
-        // 清理失败的回调函数
-        if ((window as any)[callbackName]) {
-          delete (window as any)[callbackName]
-        }
       }
 
       // 添加加载成功监听
@@ -692,9 +778,6 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
       return () => {
         // 清理函数 - 只在组件卸载时执行
-        if ((window as any)[callbackName]) {
-          delete (window as any)[callbackName]
-        }
         if (script.parentNode) {
           try {
           script.parentNode.removeChild(script)
@@ -705,11 +788,24 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       }
     }, [])
 
+    // 检测是否为移动设备
+    const isMobileDevice = () => {
+      if (typeof window === 'undefined') return false
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+             window.innerWidth <= 768
+    }
+
     // 初始化地图
     useEffect(() => {
       if (!isLoaded || !mapRef.current || !window.google) return
 
       try {
+        // 验证州级数据完整性
+        if (!validateStateData()) {
+          setError('State data validation failed')
+          return
+        }
+        
         // 检查环境变量配置
         checkEnvironmentConfig()
         
@@ -758,10 +854,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           },
         ]
 
-        // 创建地图实例
-        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        // 创建地图配置
+        const mapConfig: any = {
           zoom: 5,
-          center: { lat: 40.76, lng: -101.64 }, // 美国中心位置 { lat: 39.8283, lng: -98.5795 }
+          center: { lat: 40.0, lng: -96.0 }, // 向下调整地图中心以减少加拿大显示
           mapTypeControl: true,
           streetViewControl: true,
           fullscreenControl: true,
@@ -769,11 +865,26 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           styles: mapStyles, // 应用地图样式
           // 添加 Map ID 以启用 data-driven styling
           mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID', // 从环境变量获取或使用默认值
-        })
+        }
+
+        // 在移动端设置最小缩放级别为4
+        if (isMobileDevice()) {
+          mapConfig.minZoom = 4
+        }
+
+        // 创建地图实例
+        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, mapConfig)
 
         // 添加缩放级别变化监听器
         mapInstanceRef.current.addListener('zoom_changed', () => {
           const newZoom = mapInstanceRef.current.getZoom()
+          
+          // 在移动端防止缩放到小于4级
+          if (isMobileDevice() && newZoom < 4) {
+            mapInstanceRef.current.setZoom(4)
+            return
+          }
+          
           setCurrentZoom(newZoom)
         })
 
@@ -953,15 +1064,21 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       if (!selectedCustomer || !mapInstanceRef.current) return
 
       mapInstanceRef.current.panTo({ lat: selectedCustomer.lat, lng: selectedCustomer.lng })
-      mapInstanceRef.current.setZoom(15)
+      
+      // 在移动端使用适中的缩放级别，避免过度放大
+      const customerZoom = isMobileDevice() ? Math.min(12, 15) : 15 // 移动端最大12级，桌面端15级
+      mapInstanceRef.current.setZoom(customerZoom)
     }, [selectedCustomer])
 
     const resetView = () => {
       if (!mapInstanceRef.current || !window.google) return
 
       // 重置到固定的缩放级别和中心位置
-      mapInstanceRef.current.setCenter({ lat: 39.8283, lng: -98.5795 }) // 美国中心位置
-      mapInstanceRef.current.setZoom(5) // 固定缩放级别5
+      mapInstanceRef.current.setCenter({ lat: 40.0, lng: -96.0 }) // 向下调整地图中心以减少加拿大显示
+      
+      // 根据设备类型设置合适的缩放级别
+      const resetZoom = isMobileDevice() ? Math.max(4, 5) : 5 // 移动端最小4级
+      mapInstanceRef.current.setZoom(resetZoom)
 
       // 关闭信息窗口
       if (infoWindowRef.current) {
