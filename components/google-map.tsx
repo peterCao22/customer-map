@@ -931,24 +931,20 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           return
         }
 
-        // 计算销售量数据用于标记大小
-        const customerSalesMap = new Map<string, number>()
+        // 计算所有地址的最大销售金额，用于标记大小缩放
         let maxSalesAmount = 0
-        
         customers.forEach(customer => {
           const amount = customer.totalAmount || 0
-          if (!customerSalesMap.has(customer.customerId)) {
-            customerSalesMap.set(customer.customerId, amount)
-            maxSalesAmount = Math.max(maxSalesAmount, amount)
-          }
+          maxSalesAmount = Math.max(maxSalesAmount, amount)
         })
         
 
         // 创建新标记和圆形覆盖层（只在缩放级别6+时）
+        // 每个地址根据自己的totalAmount显示不同大小的圆圈
         customers.forEach((customer, index) => {
-          const customerSales = customerSalesMap.get(customer.customerId) || 0
-          const color = getColorByAmount(customerSales)
-          const markerRadius = getMarkerSizeByAmount(customerSales, maxSalesAmount)
+          const addressSales = customer.totalAmount || 0  // 直接使用每个地址的销售金额
+          const color = getColorByAmount(addressSales)
+          const markerRadius = getMarkerSizeByAmount(addressSales, maxSalesAmount)
           const isSelected = selectedCustomer?.id === customer.id
           
           const markerSize = markerRadius * 2 + 8
@@ -960,7 +956,7 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           const marker = new window.google.maps.Marker({
             position: { lat: customer.lat, lng: customer.lng },
             map: mapInstanceRef.current,
-            title: `${customer.companyName} (Sales: ${customerSales.toLocaleString()})`,
+            title: `${customer.companyName} - ${customer.address} (Sales: ${addressSales.toLocaleString()})`,
             icon: {
               url: markerIcon,
               scaledSize: new window.google.maps.Size(markerSize, markerSize),
@@ -990,9 +986,12 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
             const content = `
             <div class="p-3 min-w-[250px]">
               <h3 class="font-semibold text-lg mb-2">${customer.companyName}</h3>
+              <p class="text-sm mb-1"><strong>Customer ID:</strong> ${customer.customerId}</p>
+              <p class="text-sm mb-1"><strong>Address ID:</strong> ${customer.addressId}</p>
               <p class="text-sm mb-1"><strong>Email:</strong> ${customer.email}</p>
               <p class="text-sm mb-1"><strong>Phone:</strong> ${customer.phone}</p>
               <p class="text-sm mb-2"><strong>Address:</strong> ${customer.address}</p>
+              <p class="text-sm mb-2"><strong>Sales Amount:</strong> $${addressSales.toLocaleString()}</p>
               ${customer.salesRadius ? `<p class="text-sm mb-2"><strong>Sales Range:</strong> ${customer.salesRadius}km</p>` : ""}
               <div class="flex flex-wrap gap-1">
                 ${customer.tags.map((tag) => `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">${tag}</span>`).join("")}
