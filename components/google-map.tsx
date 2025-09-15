@@ -40,18 +40,16 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       return "#3b82f6" // 蓝色（有销售数据）
     }
 
-    // 根据客户销售量计算标记圆圈大小
-    const getMarkerSizeByAmount = (totalAmount: number | null, maxAmount: number) => {
-      if (!totalAmount || totalAmount <= 0) return 10 // 最小半径（无销售数据/销售量为0）
-      
-      const minSize = 7   // 最小圆圈半径（低销售量）  
-      const maxSize = 35  // 最大圆圈半径（高销售量）- 增加最大值使差异更明显
-      
-      const ratio = Math.min(totalAmount / maxAmount, 1)
-      const calculatedSize = Math.round(minSize + ratio * (maxSize - minSize))
-      
-      
-      return calculatedSize
+    // 根据客户销售量计算标记圆圈大小（固定分级）
+    const getMarkerSizeByAmount = (totalAmount: number | null) => {
+      if (!totalAmount || totalAmount <= 0) return 10 // 特例：无销售或<=0
+      if (totalAmount >= 500000) return 35 // 分级1
+      if (totalAmount >= 200000) return 30 // 分级2
+      if (totalAmount >= 120000) return 26 // 分级3
+      if (totalAmount >= 80000) return 24  // 分级4
+      if (totalAmount >= 40000) return 20  // 分级5
+      if (totalAmount >= 12000) return 15  // 分级6
+      return 12                              // 分级7
     }
 
     // 创建可变大小的销售标记SVG
@@ -931,20 +929,12 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
           return
         }
 
-        // 计算所有地址的最大销售金额，用于标记大小缩放
-        let maxSalesAmount = 0
-        customers.forEach(customer => {
-          const amount = customer.totalAmount || 0
-          maxSalesAmount = Math.max(maxSalesAmount, amount)
-        })
-        
-
         // 创建新标记和圆形覆盖层（只在缩放级别6+时）
         // 每个地址根据自己的totalAmount显示不同大小的圆圈
         customers.forEach((customer, index) => {
           const addressSales = customer.totalAmount || 0  // 直接使用每个地址的销售金额
           const color = getColorByAmount(addressSales)
-          const markerRadius = getMarkerSizeByAmount(addressSales, maxSalesAmount)
+          const markerRadius = getMarkerSizeByAmount(addressSales)
           const isSelected = selectedCustomer?.id === customer.id
           
           const markerSize = markerRadius * 2 + 8
