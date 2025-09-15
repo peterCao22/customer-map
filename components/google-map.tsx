@@ -50,13 +50,13 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
     // 根据客户销售量计算标记圆圈大小（固定分级）
     const getMarkerSizeByAmount = (totalAmount: number | null) => {
       if (!totalAmount || totalAmount <= 0) return 10 // 特例：无销售或<=0
-      if (totalAmount >= 500000) return 35 // 分级1
-      if (totalAmount >= 200000) return 30 // 分级2
+      if (totalAmount >= 500000) return 42 // 分级1
+      if (totalAmount >= 200000) return 33 // 分级2
       if (totalAmount >= 120000) return 26 // 分级3
-      if (totalAmount >= 80000) return 24  // 分级4
-      if (totalAmount >= 40000) return 20  // 分级5
-      if (totalAmount >= 12000) return 15  // 分级6
-      return 12                              // 分级7
+      if (totalAmount >= 80000) return 21  // 分级4
+      if (totalAmount >= 40000) return 16  // 分级5
+      if (totalAmount >= 12000) return 13  // 分级6
+      return 11                              // 分级7
     }
 
     // 创建可变大小的销售标记SVG
