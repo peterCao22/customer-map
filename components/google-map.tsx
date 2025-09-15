@@ -29,9 +29,16 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
     const circlesRef = useRef<any[]>([]) // 添加圆形覆盖层引用
     const infoWindowRef = useRef<any>(null)
     const statePolygonsRef = useRef<any[]>([]) // 添加州级多边形覆盖层引用
+    const overlayTimersRef = useRef<number[]>([]) // 管理州覆盖层相关的延迟回调
+    const overlaysActiveRef = useRef<boolean>(false) // 当前是否处于州覆盖层显示状态
     const [isLoaded, setIsLoaded] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [currentZoom, setCurrentZoom] = useState(5) // 当前缩放级别
+    const currentZoomRef = useRef<number>(5)
+
+    useEffect(() => {
+      currentZoomRef.current = currentZoom
+    }, [currentZoom])
 
 
     // 根据销售量获取标记颜色
@@ -243,6 +250,10 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
       try {
         // 清除现有的州级覆盖
       clearStateOverlays()
+      overlaysActiveRef.current = true
+      // 清理遗留定时器
+      overlayTimersRef.current.forEach(id => clearTimeout(id))
+      overlayTimersRef.current = []
       
         const stateStats = getCustomersByState()
         if (!stateStats) {
@@ -358,16 +369,21 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         }
 
         // 强制刷新样式以确保应用
-        setTimeout(() => {
-          if (featureLayer && featureLayer.style) {
-            const originalStyle = featureLayer.style
-            featureLayer.style = null
-            setTimeout(() => {
-              featureLayer.style = originalStyle
-
-            }, 100)
-          }
-        }, 500)
+        {
+          const t1 = window.setTimeout(() => {
+            if (!overlaysActiveRef.current || currentZoomRef.current >= 6) return
+            if (featureLayer && featureLayer.style) {
+              const originalStyle = featureLayer.style
+              featureLayer.style = null
+              const t1b = window.setTimeout(() => {
+                if (!overlaysActiveRef.current || currentZoomRef.current >= 6) return
+                featureLayer.style = originalStyle
+              }, 100)
+              overlayTimersRef.current.push(t1b as unknown as number)
+            }
+          }, 500)
+          overlayTimersRef.current.push(t1 as unknown as number)
+        }
 
         // 添加客户数量标签
         await addStateLabels(stateStats)
@@ -376,20 +392,21 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
         statePolygonsRef.current.push(featureLayer)
         
         // 添加备用检查：如果 FeatureLayer 在兼容模式下不显示，使用降级方案
-        setTimeout(() => {
-          // 检查是否真正显示了 FeatureLayer
-          // 在兼容模式下，FeatureLayer 可能存在但不工作
-          try {
-            // 尝试检查地图的渲染类型或其他方式来确定是否需要降级
-            const isRaster = mapInstanceRef.current?.getRenderingType?.() === 'RASTER'
-            if (isRaster) {
-              clearStateOverlays()
-              createEnhancedFallbackOverlay()
-            }
-          } catch (checkError) {
-            // FeatureLayer应该正常工作
-          }
-        }, 2000)
+        {
+          const t2 = window.setTimeout(() => {
+            if (!overlaysActiveRef.current || currentZoomRef.current >= 6) return
+            try {
+              const isRaster = mapInstanceRef.current?.getRenderingType?.() === 'RASTER'
+              if (isRaster) {
+                clearStateOverlays()
+                if (overlaysActiveRef.current && currentZoomRef.current < 6) {
+                  createEnhancedFallbackOverlay()
+                }
+              }
+            } catch (checkError) {}
+          }, 2000)
+          overlayTimersRef.current.push(t2 as unknown as number)
+        }
         
 
         
@@ -689,14 +706,23 @@ export const GoogleMap = forwardRef<GoogleMapRef, GoogleMapProps>(
 
     // 清除州级覆盖
     const clearStateOverlays = () => {
+      // 关闭州覆盖层活动标记
+      overlaysActiveRef.current = false
+      // 清理所有延迟回调
+      overlayTimersRef.current.forEach(id => clearTimeout(id))
+      overlayTimersRef.current = []
+
       statePolygonsRef.current.forEach(layer => {
-        if (layer.setMap) {
-          // 清除标记和其他覆盖层
-          layer.setMap(null)
-        } else if (layer.style) {
-          // 重置 FeatureLayer 样式
-          layer.style = null
-        }
+        try {
+          if (layer && typeof layer.setMap === 'function') {
+            layer.setMap(null)
+          } else if (layer && 'style' in layer) {
+            ;(layer as any).style = null
+          } else if (layer && 'map' in layer) {
+            // 例如 AdvancedMarkerElement
+            ;(layer as any).map = null
+          }
+        } catch (_) {}
       })
       statePolygonsRef.current = []
     }
